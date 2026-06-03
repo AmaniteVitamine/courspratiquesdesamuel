@@ -538,29 +538,28 @@ nav a:hover,
   }
 }
 
-/* ===== MOBILE AMÉLIORÉ ===== */
+/* ===== CORRECTION MOBILE PROPRE ===== */
 @media (max-width: 768px) {
-  .container {
-    width: min(100% - 24px, 1100px);
-  }
 
+  /* Le menu reste en haut de la page, mais ne reste pas collé à l'écran */
   .header {
-    position: sticky;
-    top: 0;
+    position: static;
+    background: #ffffff;
+    border-bottom: 1px solid var(--border);
   }
 
   .nav {
     flex-direction: column;
-    align-items: stretch;
-    gap: 12px;
-    padding: 10px 0 12px;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 0;
   }
 
   .logo {
     margin-left: 0;
     gap: 10px;
-    font-size: 1.05rem;
-    line-height: 1.15;
+    font-size: 1.15rem;
+    line-height: 1.1;
     justify-content: center;
     text-align: center;
   }
@@ -570,70 +569,40 @@ nav a:hover,
     height: 46px;
   }
 
+  /* Menu compact, horizontal, sans énormes boutons */
   nav {
     width: 100%;
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    display: flex;
+    flex-wrap: nowrap;
     gap: 8px;
-    font-size: 0.84rem;
+    overflow-x: auto;
+    justify-content: flex-start;
+    padding: 4px 2px 8px;
+    font-size: 0.82rem;
+    scrollbar-width: none;
+  }
+
+  nav::-webkit-scrollbar {
+    display: none;
   }
 
   nav a {
-    padding: 9px 8px;
-    text-align: center;
+    flex: 0 0 auto;
+    padding: 8px 13px;
     border: 1px solid var(--border);
     border-radius: 999px;
-    background: #fff;
+    background: #ffffff;
+    white-space: nowrap;
+    font-weight: 700;
+    box-shadow: none;
   }
 
-  .hero {
-    padding: 28px 0 34px;
+  nav a:hover {
+    background: #eff6ff;
   }
 
-  .hero-content {
-    gap: 24px;
-  }
-
-  .hero h1 {
-    font-size: clamp(2rem, 10vw, 2.7rem);
-    line-height: 1.08;
-    max-width: 100%;
-    text-align: center;
-  }
-
-  .hero p {
-    font-size: 1rem;
-    text-align: center;
-  }
-
-  .hero-text {
-    text-align: center;
-  }
-
-  .badge,
-  .subtitle,
-  .most-popular {
-    font-size: 0.78rem;
-  }
-
-  .hero-actions {
-    flex-direction: column;
-    gap: 10px;
-    margin-top: 22px;
-  }
-
-  .btn {
-    width: 100%;
-    padding: 13px 18px;
-    border-radius: 13px;
-  }
-
-  .hero-top-image {
-    border-radius: 18px;
-  }
-
-  .section {
-    padding: 52px 0;
+  .page-hero {
+    padding: 42px 0 18px;
   }
 
   .section-title {
@@ -641,78 +610,47 @@ nav a:hover,
   }
 
   .section-title h2 {
-    font-size: clamp(1.55rem, 7vw, 2.1rem);
+    font-size: 2rem;
+    line-height: 1.15;
   }
 
   .section-title p {
-    font-size: 0.98rem;
+    font-size: 1rem;
+    line-height: 1.55;
   }
 
-  .info-card,
-  .card,
-  .feature,
-  .price-card,
-  .example-card {
-    padding: 20px;
-    border-radius: 18px;
+  .section {
+    padding: 44px 0;
   }
 
   .example-card {
     margin-top: 0;
+    padding: 22px;
   }
 
   .pricing {
-    gap: 16px;
-  }
-
-  .price {
-    font-size: 1.55rem;
-  }
-
-  .featured {
-    transform: none;
-  }
-
-  .contact-options {
     grid-template-columns: 1fr;
+    gap: 18px;
   }
 
-  .cta-box {
-    display: grid;
-    padding: 22px;
-    gap: 20px;
-    text-align: center;
-  }
-
-  .contact-card {
-    padding: 16px;
-  }
-
-  .contact-action {
+  .btn {
     width: 100%;
-    min-width: 0;
+    padding: 13px 18px;
   }
 
-  .contact-action .btn {
-    width: 100%;
-  }
-
-  .faq-grid {
-    margin-top: 0;
-  }
-
-  .page-hero {
-    padding: 54px 0 12px;
+  .back-home {
+    width: auto;
   }
 }
 
 @media (max-width: 480px) {
+
   .container {
-    width: min(100% - 20px, 1100px);
+    width: min(100% - 22px, 1100px);
   }
 
   .logo {
-    font-size: 0.95rem;
+    font-size: 1rem;
   }
 
   .logo-img {
@@ -721,40 +659,22 @@ nav a:hover,
   }
 
   nav {
-    grid-template-columns: 1fr;
-    font-size: 0.85rem;
+    font-size: 0.78rem;
   }
 
   nav a {
-    padding: 8px 10px;
+    padding: 7px 11px;
   }
 
-  .hero {
-    padding-top: 24px;
+  .page-hero {
+    padding: 34px 0 14px;
   }
 
-  .hero h1 {
-    font-size: 2rem;
+  .section-title h2 {
+    font-size: 1.75rem;
   }
 
-  .section {
-    padding: 44px 0;
-  }
-
-  .info-card,
-  .card,
-  .feature,
-  .price-card,
-  .example-card {
-    padding: 18px;
-  }
-
-  .cta-box {
-    padding: 18px;
-    border-radius: 22px;
-  }
-
-  .contact-bold {
-    font-size: 1rem;
+  .section-title p {
+    font-size: 0.96rem;
   }
 }
