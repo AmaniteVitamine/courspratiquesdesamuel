@@ -17,10 +17,16 @@
 }
 
 html {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
   scroll-behavior: smooth;
 }
 
 body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
   font-family: "Inter", sans-serif;
   color: var(--text);
   background: #fff;
@@ -30,6 +36,11 @@ body {
 a {
   text-decoration: none;
   color: inherit;
+}
+
+img {
+  max-width: 100%;
+  height: auto;
 }
 
 .container {
@@ -54,7 +65,6 @@ a {
   gap: 20px;
 }
 
-/* Desktop version volontairement décalée */
 .logo {
   display: flex;
   align-items: center;
@@ -508,196 +518,6 @@ nav a:hover,
   margin-top: -70px;
 }
 
-/* ===== TABLET ===== */
-@media (max-width: 900px) {
-  .hero-content,
-  .steps,
-  .features,
-  .pricing,
-  .faq-grid,
-  .sample-preview {
-    grid-template-columns: 1fr;
-  }
-
-  .hero h1 {
-    max-width: 100%;
-  }
-
-  .featured {
-    transform: none;
-  }
-
-  .cta-box {
-    display: grid;
-    gap: 20px;
-    align-items: start;
-  }
-
-  .contact-action {
-    min-width: 0;
-  }
-}
-
-/* ===== CORRECTION MOBILE PROPRE ===== */
-@media (max-width: 768px) {
-
-  /* Le menu reste en haut de la page, mais ne reste pas collé à l'écran */
-  .header {
-    position: static;
-    background: #ffffff;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .nav {
-    flex-direction: column;
-    align-items: center;
-    gap: 10px;
-    padding: 12px 0;
-  }
-
-  .logo {
-    margin-left: 0;
-    gap: 10px;
-    font-size: 1.15rem;
-    line-height: 1.1;
-    justify-content: center;
-    text-align: center;
-  }
-
-  .logo-img {
-    width: 46px;
-    height: 46px;
-  }
-
-  /* Menu compact, horizontal, sans énormes boutons */
-  nav {
-    width: 100%;
-    display: flex;
-    flex-wrap: nowrap;
-    gap: 8px;
-    overflow-x: auto;
-    justify-content: flex-start;
-    padding: 4px 2px 8px;
-    font-size: 0.82rem;
-    scrollbar-width: none;
-  }
-
-  nav::-webkit-scrollbar {
-    display: none;
-  }
-
-  nav a {
-    flex: 0 0 auto;
-    padding: 8px 13px;
-    border: 1px solid var(--border);
-    border-radius: 999px;
-    background: #ffffff;
-    white-space: nowrap;
-    font-weight: 700;
-    box-shadow: none;
-  }
-
-  nav a:hover {
-    background: #eff6ff;
-  }
-
-  .page-hero {
-    padding: 42px 0 18px;
-  }
-
-  .section-title {
-    margin-bottom: 24px;
-  }
-
-  .section-title h2 {
-    font-size: 2rem;
-    line-height: 1.15;
-  }
-
-  .section-title p {
-    font-size: 1rem;
-    line-height: 1.55;
-  }
-
-  .section {
-    padding: 44px 0;
-  }
-
-  .example-card {
-    margin-top: 0;
-    padding: 22px;
-  }
-
-  .pricing {
-    grid-template-columns: 1fr;
-    gap: 18px;
-  }
-
-  .btn {
-    width: 100%;
-    padding: 13px 18px;
-  }
-
-  .back-home {
-    width: auto;
-  }
-}
-
-@media (max-width: 480px) {
-
-  .container {
-    width: min(100% - 22px, 1100px);
-  }
-
-  .logo {
-    font-size: 1rem;
-  }
-
-  .logo-img {
-    width: 40px;
-    height: 40px;
-  }
-
-  nav {
-    font-size: 0.78rem;
-  }
-
-  nav a {
-    padding: 7px 11px;
-  }
-
-  .page-hero {
-    padding: 34px 0 14px;
-  }
-
-  .section-title h2 {
-    font-size: 1.75rem;
-  }
-
-  .section-title p {
-    font-size: 0.96rem;
-  }
-}
-
-/* =========================================================
-   VERSION MOBILE PROPRE - MATHS PRATIQUES DE SAMUEL
-   À COLLER TOUT À LA FIN DE styles.css
-   ========================================================= */
-
-/* Sécurité générale contre les débordements horizontaux */
-html,
-body {
-  width: 100%;
-  max-width: 100%;
-  overflow-x: hidden;
-}
-
-img {
-  max-width: 100%;
-  height: auto;
-}
-
-/* Les longs textes comme les mails ne doivent jamais sortir de l'écran */
 .contact-bold,
 .contact-card,
 .contact-card p,
@@ -711,7 +531,7 @@ img {
   word-break: normal;
 }
 
-/* ===== TABLETTE ET PETIT ÉCRAN ===== */
+/* ===== TABLETTE ===== */
 @media (max-width: 900px) {
   .container {
     width: min(100% - 28px, 1100px);
@@ -726,19 +546,19 @@ img {
     grid-template-columns: 1fr;
   }
 
-  .featured {
-    transform: none;
-  }
-
   .hero h1 {
     max-width: 100%;
+  }
+
+  .featured {
+    transform: none;
   }
 
   .cta-box {
     display: grid;
     grid-template-columns: 1fr;
-    align-items: stretch;
     gap: 24px;
+    align-items: stretch;
   }
 
   .contact-action {
@@ -749,7 +569,6 @@ img {
 
 /* ===== MOBILE ===== */
 @media (max-width: 768px) {
-
   body {
     font-size: 16px;
   }
@@ -758,7 +577,6 @@ img {
     width: min(100% - 24px, 1100px);
   }
 
-  /* Header visible en haut mais qui ne reste PAS collé à l'écran */
   .header {
     position: static;
     background: #ffffff;
@@ -771,59 +589,29 @@ img {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 14px;
-    padding: 14px 0 16px;
+    gap: 0;
+    padding: 14px 0;
   }
 
   .logo {
     margin-left: 0;
     gap: 10px;
-    font-size: 1.15rem;
+    font-size: 1.1rem;
     line-height: 1.15;
-    text-align: center;
     justify-content: center;
+    text-align: center;
     color: var(--primary);
   }
 
   .logo-img {
-    width: 44px;
-    height: 44px;
+    width: 42px;
+    height: 42px;
   }
 
-  /* Menu mobile : plus de slide horizontal buggué */
-  nav {
-    width: 100%;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 9px;
-    overflow: visible;
-    padding: 0;
-    font-size: 0.9rem;
+  .nav nav {
+    display: none;
   }
 
-  nav a {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 44px;
-    padding: 10px 8px;
-    border: 1px solid var(--border);
-    border-radius: 999px;
-    background: #ffffff;
-    color: var(--text);
-    font-weight: 700;
-    text-align: center;
-    line-height: 1.15;
-    white-space: normal;
-    box-shadow: none;
-  }
-
-  nav a:hover {
-    background: #eff6ff;
-    color: var(--primary);
-  }
-
-  /* Hero */
   .hero {
     padding: 36px 0 46px;
     background: linear-gradient(180deg, #eff6ff 0%, #ffffff 100%);
@@ -843,22 +631,22 @@ img {
   .badge,
   .subtitle,
   .most-popular {
-    font-size: 0.8rem;
-    padding: 8px 13px;
     max-width: 100%;
+    padding: 8px 13px;
+    font-size: 0.8rem;
   }
 
   .hero h1 {
+    max-width: 100%;
     margin-top: 18px;
     font-size: clamp(2.05rem, 10vw, 3rem);
     line-height: 1.08;
     letter-spacing: -0.035em;
-    max-width: 100%;
   }
 
   .hero p {
-    margin: 18px auto 0;
     max-width: 100%;
+    margin: 18px auto 0;
     font-size: 1rem;
     line-height: 1.65;
   }
@@ -875,13 +663,8 @@ img {
     border-radius: 18px;
   }
 
-  /* Sections */
   .section {
     padding: 56px 0;
-  }
-
-  .section-alt {
-    background: var(--bg-alt);
   }
 
   .page-hero {
@@ -889,8 +672,8 @@ img {
   }
 
   .section-title {
-    margin: 0 auto 28px;
     max-width: 100%;
+    margin: 0 auto 28px;
     text-align: center;
   }
 
@@ -902,9 +685,9 @@ img {
   }
 
   .section-title h1 {
+    margin-top: 10px;
     font-size: clamp(1.7rem, 7vw, 2.2rem);
     line-height: 1.15;
-    margin-top: 10px;
   }
 
   .section-title p {
@@ -944,8 +727,8 @@ img {
   }
 
   .faq-grid {
-    margin-top: 0;
     grid-template-columns: 1fr;
+    margin-top: 0;
   }
 
   .pricing {
@@ -971,7 +754,6 @@ img {
     margin-top: 0;
   }
 
-  /* Boutons */
   .btn {
     width: 100%;
     min-height: 48px;
@@ -987,7 +769,6 @@ img {
     margin-top: 18px;
   }
 
-  /* Contact : correction principale */
   #contact .cta-box {
     width: 100%;
     display: grid;
@@ -1032,8 +813,8 @@ img {
   }
 
   #contact .contact-card h3 {
-    font-size: 1.15rem;
     margin-bottom: 10px;
+    font-size: 1.15rem;
   }
 
   #contact .contact-card p {
@@ -1045,17 +826,17 @@ img {
     display: block;
     width: 100%;
     margin-top: 12px;
+    color: #ffffff;
     font-size: 1.05rem;
     line-height: 1.45;
     text-align: left;
-    color: #ffffff;
   }
 
   #contact .contact-note2 {
     margin-top: 10px;
+    color: rgba(255, 255, 255, 0.76);
     font-size: 0.9rem;
     line-height: 1.55;
-    color: rgba(255, 255, 255, 0.76);
   }
 
   #contact .contact-info {
@@ -1087,13 +868,12 @@ img {
     color: var(--primary);
   }
 
-  /* CTA des pages FAQ / Exemples */
   .cta-box {
     width: 100%;
-    padding: 24px 18px;
-    border-radius: 24px;
     display: grid;
     grid-template-columns: 1fr;
+    padding: 24px 18px;
+    border-radius: 24px;
     text-align: center;
   }
 
@@ -1106,7 +886,6 @@ img {
     width: 100%;
   }
 
-  /* Footer */
   .footer {
     padding: 24px 12px;
     font-size: 0.9rem;
@@ -1127,16 +906,6 @@ img {
   .logo-img {
     width: 38px;
     height: 38px;
-  }
-
-  nav {
-    grid-template-columns: 1fr;
-    gap: 8px;
-  }
-
-  nav a {
-    min-height: 42px;
-    font-size: 0.88rem;
   }
 
   .hero {
