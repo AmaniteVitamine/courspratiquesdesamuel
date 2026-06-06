@@ -109,7 +109,12 @@ nav a:hover,
   display: grid;
   grid-template-columns: 1.3fr 0.9fr;
   gap: 36px;
-  align-items: center;
+  align-items: start;
+}
+
+.hero-top-image {
+  align-self: start;
+  margin-top: 0;
 }
 
 .badge {
@@ -531,95 +536,57 @@ nav a:hover,
   word-break: normal;
 }
 
-.hero-proof {
-  margin-top: 28px;
-  padding: 22px;
-  border-radius: 22px;
-  background: #ffffff;
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow);
-}
-
-.hero-proof p {
-  margin-top: 0;
-  color: var(--text);
-  font-weight: 600;
-}
-
-.hero-example-link {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  margin-top: 16px;
-  padding: 13px 20px;
-  border-radius: 14px;
-  background: var(--primary);
-  color: #ffffff;
-  font-weight: 800;
-  box-shadow: var(--shadow);
-  transition: 0.2s ease;
-}
-
-.hero-example-link:hover {
-  background: var(--primary-dark);
-  transform: translateY(-1px);
-}
-
-.examples-highlight {
+.pdf-highlight {
   padding-top: 70px;
   padding-bottom: 80px;
   background: #ffffff;
 }
 
-.examples-home-grid {
-  grid-template-columns: repeat(3, 1fr);
-  align-items: stretch;
-}
-
-.example-home-card {
-  position: relative;
+.pdf-preview-box {
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 24px;
-  padding: 28px;
+  border-radius: 28px;
+  padding: 26px;
   box-shadow: var(--shadow);
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
 }
 
-.example-home-card h3 {
+.pdf-preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 22px;
+  margin-bottom: 22px;
+}
+
+.pdf-preview-header h3 {
   font-size: 1.35rem;
   line-height: 1.2;
+  margin-bottom: 6px;
 }
 
-.example-home-card p {
+.pdf-preview-header p {
   color: var(--muted);
+  max-width: 620px;
 }
 
-.example-home-card .btn {
-  margin-top: auto;
+.pdf-frame-wrap {
+  width: 100%;
+  height: 720px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  overflow: hidden;
+  background: #f8fafc;
 }
 
-.featured-example {
-  border: 2px solid var(--primary);
-  transform: translateY(-8px);
+.pdf-frame {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #ffffff;
 }
 
-.example-tag {
-  width: fit-content;
-  padding: 7px 12px;
-  border-radius: 999px;
-  background: rgba(37, 99, 235, 0.1);
-  color: var(--primary);
-  font-weight: 800;
-  font-size: 0.85rem;
-}
-
-.examples-more {
-  display: flex;
-  justify-content: center;
-  margin-top: 26px;
+.pdf-mobile-actions {
+  display: none;
 }
 
 /* ===== TABLETTE ===== */
@@ -983,44 +950,46 @@ nav a:hover,
     line-height: 1.5;
   }
 
-  .hero-proof {
-  margin-top: 24px;
-  padding: 20px;
-  text-align: center;
-}
-
-.hero-proof p {
-  font-size: 0.98rem;
-  line-height: 1.55;
-}
-
-.hero-example-link {
-  width: 100%;
-  min-height: 48px;
-  padding: 13px 18px;
-}
-
-.examples-highlight {
+.pdf-highlight {
   padding-top: 52px;
   padding-bottom: 58px;
 }
 
-.examples-home-grid {
+.pdf-preview-box {
+  padding: 18px;
+  border-radius: 22px;
+}
+
+.pdf-preview-header {
+  display: grid;
   grid-template-columns: 1fr;
-  gap: 18px;
+  gap: 16px;
+  text-align: center;
 }
 
-.example-home-card {
-  padding: 22px;
-  border-radius: 20px;
+.pdf-preview-header h3 {
+  font-size: 1.2rem;
 }
 
-.featured-example {
-  transform: none;
+.pdf-preview-header p {
+  font-size: 0.98rem;
+  line-height: 1.55;
 }
 
-.examples-more {
-  margin-top: 20px;
+.pdf-preview-header .btn {
+  display: none;
+}
+
+.pdf-frame-wrap {
+  height: 540px;
+  border-radius: 16px;
+}
+
+.pdf-mobile-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  margin-top: 16px;
 }
 }
 
