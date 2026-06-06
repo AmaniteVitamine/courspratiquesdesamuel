@@ -678,3 +678,501 @@ nav a:hover,
     font-size: 0.96rem;
   }
 }
+
+/* =========================================================
+   VERSION MOBILE PROPRE - MATHS PRATIQUES DE SAMUEL
+   À COLLER TOUT À LA FIN DE styles.css
+   ========================================================= */
+
+/* Sécurité générale contre les débordements horizontaux */
+html,
+body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Les longs textes comme les mails ne doivent jamais sortir de l'écran */
+.contact-bold,
+.contact-card,
+.contact-card p,
+.price-card,
+.card,
+.feature,
+.info-card,
+.cta-box,
+.btn {
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+/* ===== TABLETTE ET PETIT ÉCRAN ===== */
+@media (max-width: 900px) {
+  .container {
+    width: min(100% - 28px, 1100px);
+  }
+
+  .hero-content,
+  .steps,
+  .features,
+  .pricing,
+  .faq-grid,
+  .sample-preview {
+    grid-template-columns: 1fr;
+  }
+
+  .featured {
+    transform: none;
+  }
+
+  .hero h1 {
+    max-width: 100%;
+  }
+
+  .cta-box {
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: stretch;
+    gap: 24px;
+  }
+
+  .contact-action {
+    min-width: 0;
+    width: 100%;
+  }
+}
+
+/* ===== MOBILE ===== */
+@media (max-width: 768px) {
+
+  body {
+    font-size: 16px;
+  }
+
+  .container {
+    width: min(100% - 24px, 1100px);
+  }
+
+  /* Header visible en haut mais qui ne reste PAS collé à l'écran */
+  .header {
+    position: static;
+    background: #ffffff;
+    border-bottom: 1px solid var(--border);
+    backdrop-filter: none;
+  }
+
+  .nav {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    padding: 14px 0 16px;
+  }
+
+  .logo {
+    margin-left: 0;
+    gap: 10px;
+    font-size: 1.15rem;
+    line-height: 1.15;
+    text-align: center;
+    justify-content: center;
+    color: var(--primary);
+  }
+
+  .logo-img {
+    width: 44px;
+    height: 44px;
+  }
+
+  /* Menu mobile : plus de slide horizontal buggué */
+  nav {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 9px;
+    overflow: visible;
+    padding: 0;
+    font-size: 0.9rem;
+  }
+
+  nav a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 10px 8px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: #ffffff;
+    color: var(--text);
+    font-weight: 700;
+    text-align: center;
+    line-height: 1.15;
+    white-space: normal;
+    box-shadow: none;
+  }
+
+  nav a:hover {
+    background: #eff6ff;
+    color: var(--primary);
+  }
+
+  /* Hero */
+  .hero {
+    padding: 36px 0 46px;
+    background: linear-gradient(180deg, #eff6ff 0%, #ffffff 100%);
+  }
+
+  .hero-content {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 28px;
+    align-items: center;
+  }
+
+  .hero-text {
+    text-align: center;
+  }
+
+  .badge,
+  .subtitle,
+  .most-popular {
+    font-size: 0.8rem;
+    padding: 8px 13px;
+    max-width: 100%;
+  }
+
+  .hero h1 {
+    margin-top: 18px;
+    font-size: clamp(2.05rem, 10vw, 3rem);
+    line-height: 1.08;
+    letter-spacing: -0.035em;
+    max-width: 100%;
+  }
+
+  .hero p {
+    margin: 18px auto 0;
+    max-width: 100%;
+    font-size: 1rem;
+    line-height: 1.65;
+  }
+
+  .hero-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+    margin-top: 24px;
+  }
+
+  .hero-top-image {
+    width: 100%;
+    border-radius: 18px;
+  }
+
+  /* Sections */
+  .section {
+    padding: 56px 0;
+  }
+
+  .section-alt {
+    background: var(--bg-alt);
+  }
+
+  .page-hero {
+    padding: 44px 0 24px;
+  }
+
+  .section-title {
+    margin: 0 auto 28px;
+    max-width: 100%;
+    text-align: center;
+  }
+
+  .section-title h2 {
+    margin-top: 12px;
+    font-size: clamp(1.75rem, 7.5vw, 2.35rem);
+    line-height: 1.13;
+    letter-spacing: -0.025em;
+  }
+
+  .section-title h1 {
+    font-size: clamp(1.7rem, 7vw, 2.2rem);
+    line-height: 1.15;
+    margin-top: 10px;
+  }
+
+  .section-title p {
+    font-size: 1rem;
+    line-height: 1.65;
+  }
+
+  .grid {
+    gap: 18px;
+  }
+
+  .info-card,
+  .card,
+  .feature,
+  .price-card,
+  .example-card,
+  .sample-sheet {
+    padding: 22px;
+    border-radius: 18px;
+    box-shadow: 0 8px 22px rgba(15, 23, 42, 0.07);
+  }
+
+  .card h3,
+  .feature h3,
+  .price-card h3,
+  .example-card h3 {
+    font-size: 1.12rem;
+    line-height: 1.25;
+  }
+
+  .card p,
+  .feature p,
+  .price-card li,
+  .info-card p {
+    font-size: 0.98rem;
+    line-height: 1.6;
+  }
+
+  .faq-grid {
+    margin-top: 0;
+    grid-template-columns: 1fr;
+  }
+
+  .pricing {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .price-card {
+    width: 100%;
+  }
+
+  .price {
+    font-size: 2rem;
+    line-height: 1.15;
+  }
+
+  .price span {
+    font-size: 0.95rem;
+    line-height: 1.35;
+  }
+
+  .example-card {
+    margin-top: 0;
+  }
+
+  /* Boutons */
+  .btn {
+    width: 100%;
+    min-height: 48px;
+    padding: 13px 18px;
+    border-radius: 14px;
+    text-align: center;
+    line-height: 1.25;
+    white-space: normal;
+  }
+
+  .back-home {
+    width: 100%;
+    margin-top: 18px;
+  }
+
+  /* Contact : correction principale */
+  #contact .cta-box {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 24px;
+    padding: 26px 18px;
+    border-radius: 24px;
+    overflow: hidden;
+    text-align: left;
+  }
+
+  #contact .contact-content {
+    width: 100%;
+    min-width: 0;
+  }
+
+  #contact .contact-content h2 {
+    font-size: 2rem;
+    line-height: 1.15;
+    text-align: left;
+  }
+
+  #contact .contact-intro {
+    font-size: 1rem;
+    line-height: 1.55;
+  }
+
+  #contact .contact-options {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 14px;
+    margin: 20px 0;
+  }
+
+  #contact .contact-card {
+    width: 100%;
+    min-width: 0;
+    padding: 18px;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.14);
+  }
+
+  #contact .contact-card h3 {
+    font-size: 1.15rem;
+    margin-bottom: 10px;
+  }
+
+  #contact .contact-card p {
+    font-size: 0.98rem;
+    line-height: 1.5;
+  }
+
+  #contact .contact-bold {
+    display: block;
+    width: 100%;
+    margin-top: 12px;
+    font-size: 1.05rem;
+    line-height: 1.45;
+    text-align: left;
+    color: #ffffff;
+  }
+
+  #contact .contact-note2 {
+    margin-top: 10px;
+    font-size: 0.9rem;
+    line-height: 1.55;
+    color: rgba(255, 255, 255, 0.76);
+  }
+
+  #contact .contact-info {
+    margin-top: 18px;
+  }
+
+  #contact .contact-info p {
+    font-size: 0.98rem;
+    line-height: 1.6;
+  }
+
+  #contact .contact-action {
+    width: 100%;
+    min-width: 0;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  #contact .contact-action .btn {
+    width: 100%;
+    background: #ffffff;
+    color: var(--primary);
+    border-color: #ffffff;
+  }
+
+  #contact .contact-action .btn-outline {
+    background: rgba(255, 255, 255, 0.96);
+    color: var(--primary);
+  }
+
+  /* CTA des pages FAQ / Exemples */
+  .cta-box {
+    width: 100%;
+    padding: 24px 18px;
+    border-radius: 24px;
+    display: grid;
+    grid-template-columns: 1fr;
+    text-align: center;
+  }
+
+  .cta-box h2 {
+    font-size: 1.75rem;
+    line-height: 1.2;
+  }
+
+  .contact-action {
+    width: 100%;
+  }
+
+  /* Footer */
+  .footer {
+    padding: 24px 12px;
+    font-size: 0.9rem;
+    line-height: 1.5;
+  }
+}
+
+/* ===== TRÈS PETITS TÉLÉPHONES ===== */
+@media (max-width: 430px) {
+  .container {
+    width: min(100% - 20px, 1100px);
+  }
+
+  .logo {
+    font-size: 1rem;
+  }
+
+  .logo-img {
+    width: 38px;
+    height: 38px;
+  }
+
+  nav {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  nav a {
+    min-height: 42px;
+    font-size: 0.88rem;
+  }
+
+  .hero {
+    padding: 30px 0 40px;
+  }
+
+  .hero h1 {
+    font-size: 2rem;
+  }
+
+  .hero p {
+    font-size: 0.98rem;
+  }
+
+  .section {
+    padding: 46px 0;
+  }
+
+  .section-title h2 {
+    font-size: 1.75rem;
+  }
+
+  .info-card,
+  .card,
+  .feature,
+  .price-card,
+  .example-card,
+  .sample-sheet {
+    padding: 18px;
+  }
+
+  #contact .cta-box {
+    padding: 24px 16px;
+  }
+
+  #contact .contact-content h2 {
+    font-size: 1.8rem;
+  }
+}
