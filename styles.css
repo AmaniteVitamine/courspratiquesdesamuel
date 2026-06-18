@@ -113,6 +113,14 @@ nav {
   justify-content: flex-end;
 }
 
+.contact-action .btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  line-height: 1.35;
+}
+
 nav a,
 .anchor-links a {
   font-weight: 600;

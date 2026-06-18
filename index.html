@@ -79,9 +79,14 @@
           </p>
         </div>
 
-        <a href="exemple-fichier.html" class="btn btn-outline">
-          Voir les autres exemples
-        </a>
+        <a
+  href="exemple-fichier.html"
+  class="btn btn-outline"
+  data-ga-event="view_examples"
+  data-ga-label="autres_exemples"
+>
+  Voir les autres exemples
+</a>
       </div>
 
       <div class="pdf-scroll-preview">
@@ -116,13 +121,25 @@
       </div>
 
       <div class="pdf-mobile-actions">
-        <a href="exemplespdf/Fiche_Lila_3e_Thalès.pdf" class="btn" target="_blank" rel="noopener noreferrer">
-          Ouvrir le PDF en grand
-        </a>
+        <a
+  href="exemplespdf/fiche_lila_3e_thales.pdf"
+  class="btn"
+  target="_blank"
+  rel="noopener noreferrer"
+  data-ga-event="open_pdf"
+  data-ga-label="fiche_thales"
+>
+  Ouvrir le PDF en grand
+</a>
 
-        <a href="exemple-fichier.html" class="btn btn-outline">
-          Voir les autres exemples
-        </a>
+        <a
+  href="exemple-fichier.html"
+  class="btn btn-outline"
+  data-ga-event="view_examples"
+  data-ga-label="autres_exemples"
+>
+  Voir les autres exemples
+</a>
       </div>
     </div>
 
@@ -252,7 +269,14 @@
               <li>Espace de réponse intégré</li>
               <li>Correction détaillée</li>
             </ul>
-            <a href="#contact" class="btn btn-outline">Choisir cette offre</a>
+            <a
+  href="#contact"
+  class="btn btn-outline"
+  data-ga-event="select_offer"
+  data-ga-label="standard"
+>
+  Choisir cette offre
+</a>
           </article>
 
           <article class="price-card featured">
@@ -265,7 +289,14 @@
               <li>Espace de réponse intégré</li>
               <li>Correction détaillée</li>
             </ul>
-            <a href="#contact" class="btn">Choisir cette offre</a>
+            <a
+  href="#contact"
+  class="btn"
+  data-ga-event="select_offer"
+  data-ga-label="prioritaire"
+>
+  Choisir cette offre
+</a>
           </article>
 
           <article class="price-card">
@@ -277,7 +308,14 @@
               <li>Espace de réponse intégré</li>
               <li>Correction détaillée</li>
             </ul>
-            <a href="#contact" class="btn btn-outline">Choisir cette offre</a>
+            <a
+  href="#contact"
+  class="btn btn-outline"
+  data-ga-event="select_offer"
+  data-ga-label="express"
+>
+  Choisir cette offre
+</a>
           </article>
         </div>
       </div>
@@ -339,9 +377,30 @@
     </div>
 
     <div class="contact-action">
-      <a href="mailto:mathspratiquesdesamuel@gmail.com" class="btn">M'envoyer un mail</a>
-      <a href="faq.html" class="btn btn-outline">FAQ</a>
-      <a href="exemple-fichier.html" class="btn btn-outline">Exemples de fichier envoyé</a>
+      <a
+  href="mailto:mathspratiquesdesamuel@gmail.com"
+  class="btn"
+  data-ga-event="click_email"
+  data-ga-label="bouton_contact"
+>
+  M'envoyer un mail
+</a>
+      <a
+  href="faq.html"
+  class="btn btn-outline"
+  data-ga-event="view_faq"
+  data-ga-label="bouton_contact"
+>
+  FAQ
+</a>
+     <a
+  href="exemple-fichier.html"
+  class="btn btn-outline"
+  data-ga-event="view_examples"
+  data-ga-label="bouton_contact"
+>
+  Voir les exemples de fichiers
+</a>
     </div>
 
   </div>
@@ -355,6 +414,31 @@
       <p>Tous droits réservés</p>
     </div>
   </footer>
+
+  <script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const trackedLinks = document.querySelectorAll("[data-ga-event]");
+
+    trackedLinks.forEach(function (link) {
+      link.addEventListener("click", function () {
+        const eventName = link.dataset.gaEvent;
+        const eventLabel = link.dataset.gaLabel || "";
+        const linkText = link.textContent.trim();
+        const linkUrl = link.getAttribute("href") || "";
+
+        if (typeof gtag === "function") {
+          gtag("event", eventName, {
+            event_label: eventLabel,
+            link_text: linkText,
+            link_url: linkUrl,
+            page_location: window.location.href,
+            transport_type: "beacon"
+          });
+        }
+      });
+    });
+  });
+</script>
 
 </body>
 </html>

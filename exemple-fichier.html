@@ -60,27 +60,48 @@
           <h3>Fractions</h3>
           <p class="price">Exemple 1</p>
           <br>
-          <a href="exemplespdf/Fiche_Thomas_5e_fractions.pdf" class="btn" target="_blank" rel="noopener noreferrer">
-            Ouvrir
-          </a>
+          <a
+  href="exemplespdf/Fiche_Thomas_5e_fractions.pdf"
+  class="btn"
+  target="_blank"
+  rel="noopener noreferrer"
+  data-ga-event="open_example_pdf"
+  data-ga-label="fractions_5e"
+>
+  Ouvrir
+</a>
         </article>
 
         <article class="example-card">
           <h3>Équations du premier degré</h3>
           <p class="price">Exemple 2</p>
           <br>
-          <a href="exemplespdf/Fiche_Leandre_4e_équations_1er_degré.pdf" class="btn" target="_blank" rel="noopener noreferrer">
-            Ouvrir
-          </a>
+          <a
+  href="exemplespdf/Fiche_Leandre_4e_équations_1er_degré.pdf"
+  class="btn"
+  target="_blank"
+  rel="noopener noreferrer"
+  data-ga-event="open_example_pdf"
+  data-ga-label="equations_4e"
+>
+  Ouvrir
+</a>
         </article>
 
         <article class="example-card">
           <h3>Théorème de Thalès</h3>
           <p class="price">Exemple 3</p>
           <br>
-          <a href="exemplespdf/Fiche_Lila_3e_Thalès.pdf" class="btn" target="_blank" rel="noopener noreferrer">
-            Ouvrir
-          </a>
+          <a
+  href="exemplespdf/Fiche_Lila_3e_Thalès.pdf"
+  class="btn"
+  target="_blank"
+  rel="noopener noreferrer"
+  data-ga-event="open_example_pdf"
+  data-ga-label="thales_3e"
+>
+  Ouvrir
+</a>
         </article>
 
       </div>
@@ -109,6 +130,31 @@
       <p>Tous droits réservés</p>
     </div>
   </footer>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const trackedLinks = document.querySelectorAll("[data-ga-event]");
+
+    trackedLinks.forEach(function (link) {
+      link.addEventListener("click", function () {
+        const eventName = link.dataset.gaEvent;
+        const eventLabel = link.dataset.gaLabel || "";
+        const linkText = link.textContent.trim();
+        const linkUrl = link.getAttribute("href") || "";
+
+        if (typeof gtag === "function") {
+          gtag("event", eventName, {
+            event_label: eventLabel,
+            link_text: linkText,
+            link_url: linkUrl,
+            page_location: window.location.href,
+            transport_type: "beacon"
+          });
+        }
+      });
+    });
+  });
+</script>
 
 </body>
 </html>
