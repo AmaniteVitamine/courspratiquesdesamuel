@@ -1,368 +1,403 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 
-const $ = (id) => document.getElementById(id);
+const $ = id => document.getElementById(id);
 const BUCKET = 'eleves-documents';
-const TECHNICAL_DOMAIN = 'eleves.mathspratiquesdesamuel.com';
-const CATEGORIES = { cours:'Cours', exercices:'Exercices', correction:'Correction', controle:'Contrôle', autre:'Autre' };
-let api = null;
-let myProfile = null;
-let students = [];
-let resources = [];
-let studentResources = [];
-let editingResource = null;
+const DOMAIN = 'eleves.mathspratiquesdesamuel.com';
+const CATEGORIES = {cours:'Cours',exercices:'Exercices',correction:'Correction',controle:'Contrôle',autre:'Autre'};
+const MAX_SIZE = 15 * 1024 * 1024;
+let api, myProfile=null, students=[], resources=[], studentResources=[], attachments=[], messages=[];
+let editingResource=null, openedChat=null;
 
-function escapeHtml(value) {
-  return String(value ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function formatDate(v){
+  if(!v)return 'Date inconnue';
+  return new Intl.DateTimeFormat('fr-FR',{timeZone:'Europe/Paris',day:'2-digit',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'}).format(new Date(v));
 }
-function dateTime(value) {
-  if (!value) return 'Date inconnue';
-  return new Intl.DateTimeFormat('fr-FR', {timeZone:'Europe/Paris',day:'2-digit',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'}).format(new Date(value));
+function courseDate(v){if(!v)return ''; const b=String(v).split('-');return b.length===3?`${b[2]}/${b[1]}/${b[0]}`:v;}
+function toast(t,error=false){const el=$('global-message');el.textContent=t;el.style.background=error?'#992d2d':'#203142';el.hidden=false;}
+function feedback(id,t,error=false){const e=$(id);e.hidden=false;e.textContent=t;e.className=error?'error':'success';}
+function clear(id){$(id).hidden=true;$(id).textContent='';}
+function page(which){
+  $('login-section').hidden=which!=='login';$('student-section').hidden=which!=='student';$('admin-section').hidden=which!=='admin';
+  $('logout').hidden=which==='login';$('change-password-button').hidden=which==='login';
 }
-function courseDate(value) {
-  if (!value) return '';
-  const bits = String(value).split('-');
-  return bits.length === 3 ? `${bits[2]}/${bits[1]}/${bits[0]}` : String(value);
+function makePassword(){
+  const alphabet='ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#%+-_';
+  const numbers=new Uint32Array(18);crypto.getRandomValues(numbers);
+  return [...numbers].map(v=>alphabet[v%alphabet.length]).join('');
 }
-function showMessage(message, isError=false) {
-  const target = $('global-message');
-  target.textContent = message;
-  target.style.background = isError ? '#9c2c2c' : '#203142';
-  target.hidden = false;
-  // L'utilisateur ferme le message en cliquant dessus : pas d'état global fragile.
-}
-function showResult(id, message, isError=false) {
-  const el = $(id);
-  el.hidden = false;
-  el.className = isError ? 'error' : 'success';
-  el.textContent = message;
-}
-function clearResult(id) { $(id).hidden = true; }
-function busy(id, yes) { $(id).disabled = yes; }
-function page(which) {
-  $('login-section').hidden = which !== 'login';
-  $('student-section').hidden = which !== 'student';
-  $('admin-section').hidden = which !== 'admin';
-  $('logout').hidden = which === 'login';
-  $('nav-admin').hidden = which !== 'admin';
-  $('nav-student').hidden = which !== 'student';
-}
-function requireConfig() {
-  const conf = window.ESPACE_CONFIG || {};
-  if (!conf.supabaseUrl?.startsWith('https://') || !conf.publishableKey ||
-      conf.supabaseUrl.includes('REMPLACER') || conf.publishableKey.includes('REMPLACER')) {
-    $('login-submit').disabled = true;
-    showResult('login-error', "L'espace est en cours de configuration. Réessaie un peu plus tard.", true);
-    return null;
+function validConfig(){
+  const c=window.ESPACE_CONFIG||{};
+  if(!c.supabaseUrl?.startsWith('https://')||!c.publishableKey||c.supabaseUrl.includes('REMPLACER')||c.publishableKey.includes('REMPLACER')){
+    feedback('login-error','Cet espace est momentanément indisponible.',true);$('login-submit').disabled=true;return null;
   }
-  if (/sb_secret|service_role/i.test(conf.publishableKey)) {
-    $('login-submit').disabled = true;
-    showResult('login-error','Configuration invalide : une clé privée ne doit jamais être utilisée ici.',true);
-    return null;
+  if(/sb_secret|service_role/i.test(c.publishableKey)){
+    feedback('login-error','Configuration invalide : clé privée exposée.',true);$('login-submit').disabled=true;return null;
   }
-  return conf;
+  return c;
 }
-function generatePassword() {
-  const symbols = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#%+-_';
-  const bytes = new Uint32Array(18);
-  crypto.getRandomValues(bytes);
-  return [...bytes].map((v) => symbols[v % symbols.length]).join('');
+async function signIn(e){
+  e.preventDefault();clear('login-error');$('login-submit').disabled=true;
+  const id=$('login-identifier').value.trim().toLowerCase();
+  const email=id.includes('@')?id:`${id}@${DOMAIN}`;
+  try{
+    const {error}=await api.auth.signInWithPassword({email,password:$('login-password').value});
+    if(error)throw new Error('Identifiant ou mot de passe incorrect.');
+    $('login-password').value='';await loadMySpace();
+  }catch(err){feedback('login-error',err.message,true)}finally{$('login-submit').disabled=false;}
 }
-async function signIn(event) {
-  event.preventDefault(); clearResult('login-error'); busy('login-submit',true);
-  const id = $('login-identifier').value.trim().toLowerCase();
-  const pw = $('login-password').value;
-  if (!id || !pw) { busy('login-submit',false); return; }
-  const email = id.includes('@') ? id : `${id}@${TECHNICAL_DOMAIN}`;
-  try {
-    const { error } = await api.auth.signInWithPassword({email,password:pw});
-    if (error) throw new Error('Identifiant ou mot de passe incorrect.');
-    $('login-password').value = '';
-    await loadMySpace();
-  } catch (error) { showResult('login-error',error.message || 'Connexion impossible.',true); }
-  finally {busy('login-submit',false);}
+async function loadMySpace(){
+  const {data:{user},error:ue}=await api.auth.getUser();
+  if(ue||!user){page('login');return;}
+  const {data:p,error}=await api.from('profiles').select('id,identifier,display_name,role,active').eq('id',user.id).maybeSingle();
+  if(error||!p?.active){await api.auth.signOut();myProfile=null;page('login');feedback('login-error','Compte non disponible. Contacte le responsable du service.',true);return;}
+  myProfile=p;
+  if(p.role==='admin'){page('admin');await loadAdmin();}
+  else{page('student');$('student-greeting').textContent=`Bonjour ${p.display_name} !`;await loadStudent();}
 }
-async function loadMySpace() {
-  const {data:{user},error:userError} = await api.auth.getUser();
-  if (userError || !user) {page('login');return;}
-  const {data:profile,error} = await api.from('profiles')
-    .select('id,identifier,display_name,role,active').eq('id',user.id).maybeSingle();
-  if (error || !profile || !profile.active) {
-    await api.auth.signOut();
-    myProfile = null;
-    page('login');
-    showResult('login-error',"Ton espace n'est pas encore activé ou a été désactivé. Contacte Samuel.",true);
-    return;
-  }
-  myProfile = profile;
-  if (profile.role === 'admin') {
-    page('admin');
-    await loadAdmin();
-  } else {
-    page('student');
-    $('student-greeting').textContent = `Bonjour ${profile.display_name || 'à toi'} !`;
-    await loadStudent();
-  }
+async function signOut(){
+  await api.auth.signOut();myProfile=null;students=[];resources=[];studentResources=[];messages=[];attachments=[];
+  $('login-form').reset();page('login');toast('Déconnexion effectuée.');
 }
-async function signOut() {
-  await api.auth.signOut();
-  myProfile=null;students=[];resources=[];studentResources=[];
-  $('login-form').reset();
-  page('login');
-  showMessage('Tu es bien déconnecté.');
+async function changePassword(e){
+  e.preventDefault();clear('password-error');$('password-submit').disabled=true;
+  const old=$('old-password').value,newPw=$('new-password').value,confirmPw=$('confirm-password').value;
+  try{
+    if(newPw!==confirmPw)throw new Error('Les nouveaux mots de passe sont différents.');
+    if(newPw.length<12||newPw.length>100)throw new Error('Le nouveau mot de passe doit contenir au moins 12 caractères.');
+    const {data:{user}}=await api.auth.getUser();if(!user?.email)throw new Error('Session expirée.');
+    // Ré-authentification avec l'ancien mot de passe AVANT la modification.
+    const {error:oldError}=await api.auth.signInWithPassword({email:user.email,password:old});
+    if(oldError)throw new Error('Le mot de passe actuel est incorrect.');
+    const {error}=await api.auth.updateUser({password:newPw});if(error)throw error;
+    $('password-form').reset();$('password-dialog').close();toast('Mot de passe modifié.');
+  }catch(err){feedback('password-error',err.message||'Modification impossible.',true)}
+  finally{$('password-submit').disabled=false;}
 }
-async function loadStudent() {
-  const {data,error} = await api.from('resources').select('*').order('added_at',{ascending:false});
-  if (error) { showMessage('Impossible de charger tes documents.',true); return; }
-  studentResources = data || [];
-  $('student-count').textContent = `${studentResources.length} document${studentResources.length > 1 ? 's' : ''}`;
+function filesFor(r){
+  return [
+    ...(r.file_path?[{id:null,file_path:r.file_path,file_name:r.file_name||'Fichier'}]:[]),
+    ...attachments.filter(f=>f.resource_id===r.id)
+  ];
+}
+async function loadStudent(){
+  const [rr,fr]=await Promise.all([
+    api.from('resources').select('*').order('added_at',{ascending:false}),
+    api.from('resource_files').select('*')
+  ]);
+  if(rr.error||fr.error){toast('Impossible de charger les documents. La migration SQL V2 est-elle exécutée ?',true);return;}
+  studentResources=rr.data||[];attachments=fr.data||[];
+  $('student-count').textContent=`${studentResources.length} envoi${studentResources.length>1?'s':''}`;
   renderStudent();
 }
-function renderStudent() {
-  const query = $('student-search').value.trim().toLocaleLowerCase('fr');
-  const cat = $('student-type').value;
-  const mode = $('student-sort').value;
-  const items = studentResources.filter((r) => (cat==='all' || r.category===cat) &&
-      `${r.title} ${r.description||''} ${r.content||''}`.toLocaleLowerCase('fr').includes(query));
-  items.sort((a,b) => mode === 'old' ? new Date(a.added_at)-new Date(b.added_at)
-      : mode === 'az' ? a.title.localeCompare(b.title,'fr',{sensitivity:'base'})
-      : new Date(b.added_at)-new Date(a.added_at));
-  $('student-empty').hidden = items.length !== 0;
-  $('student-empty').textContent = studentResources.length
-    ? 'Aucun document ne correspond à tes filtres.'
-    : 'Aucun document pour le moment. Samuel ajoutera tes ressources ici après les cours.';
-  $('student-list').innerHTML = items.map((r) => `
-    <article class="resource-card">
-      <div class="card-top"><span class="tag ${escapeHtml(r.category)}">${escapeHtml(CATEGORIES[r.category] || 'Document')}</span><span class="meta">Ajouté le ${escapeHtml(dateTime(r.added_at))}</span></div>
-      <h3>${escapeHtml(r.title)}</h3>
-      ${r.course_date ? `<p class="meta">📅 Pour le cours du ${escapeHtml(courseDate(r.course_date))}</p>` : ''}
-      ${r.description ? `<p class="description">${escapeHtml(r.description)}</p>` : ''}
+function renderStudent(){
+  const q=$('student-search').value.trim().toLocaleLowerCase('fr'),type=$('student-type').value,sort=$('student-sort').value;
+  const items=studentResources.filter(r=>(type==='all'||r.category===type)&&`${r.title} ${r.description||''} ${r.content||''}`.toLocaleLowerCase('fr').includes(q));
+  items.sort((a,b)=>sort==='old'?new Date(a.added_at)-new Date(b.added_at):
+    sort==='az'?a.title.localeCompare(b.title,'fr',{sensitivity:'base'}):
+    sort==='za'?b.title.localeCompare(a.title,'fr',{sensitivity:'base'}):
+    new Date(b.added_at)-new Date(a.added_at));
+  $('student-empty').hidden=items.length>0;
+  $('student-empty').textContent=studentResources.length?'Aucun résultat pour ces filtres.':'Aucun document pour le moment.';
+  $('student-list').innerHTML=items.map(r=>{
+    const att=filesFor(r);
+    return `<article class="resource-card">
+      <div class="card-top"><span class="tag ${esc(r.category)}">${esc(CATEGORIES[r.category]||'Document')}</span><span class="meta">Ajouté le ${esc(formatDate(r.added_at))}</span></div>
+      <h3>${esc(r.title)}</h3>
+      ${r.course_date?`<p class="meta">Cours du ${esc(courseDate(r.course_date))}</p>`:''}
+      ${r.description?`<p class="description">${esc(r.description)}</p>`:''}
+      ${att.length?`<div class="resource-files">${att.map((f,i)=>`<button class="resource-file-button" type="button" data-open-file="${esc(r.id)}" data-file-index="${i}"><span>📄 ${esc(f.file_name)}</span><span>↗</span></button>`).join('')}</div>`:''}
       <div class="resource-actions">
-        ${r.file_path ? `<button type="button" class="btn primary" data-open-file="${escapeHtml(r.id)}">Ouvrir le fichier ↗</button>` : ''}
-        ${r.content ? `<button type="button" class="btn ghost" data-toggle-text="${escapeHtml(r.id)}" aria-expanded="false">Lire les consignes</button>` : ''}
+       ${r.content?`<button type="button" class="btn ghost" data-toggle-text="${esc(r.id)}">Lire les consignes</button>`:''}
+       <button class="btn ghost" type="button" data-chat="${esc(r.id)}">Poser une question</button>
       </div>
-      ${r.content ? `<div class="resource-content" data-content="${escapeHtml(r.id)}" hidden>${escapeHtml(r.content)}</div>` : ''}
-    </article>`).join('');
+      ${r.content?`<div class="resource-content" data-content="${esc(r.id)}" hidden>${esc(r.content)}</div>`:''}
+    </article>`;
+  }).join('');
 }
-async function openFile(id) {
-  const r = [...studentResources, ...resources].find((x)=>x.id===id);
-  if (!r?.file_path) return;
-  // Ouvrir l'onglet immédiatement au clic, avant l'attente réseau, évite le
-  // blocage des fenêtres contextuelles sur iPhone/Safari et Android.
-  const target = window.open('about:blank','_blank');
-  try {
-    // URL temporaire de 2 minutes, jamais d'URL publique permanente.
-    const {data,error} = await api.storage.from(BUCKET).createSignedUrl(r.file_path,120);
-    if (error || !data?.signedUrl) throw new Error('Accès au document impossible.');
-    if (target) {
-      target.opener = null;
-      target.location.replace(data.signedUrl);
-    } else {
-      window.location.assign(data.signedUrl);
-    }
-  } catch (error) {
-    if (target) target.close();
-    showMessage(error.message || 'Document indisponible.',true);
-  }
+async function openFile(resourceId,index){
+  const r=[...studentResources,...resources].find(x=>x.id===resourceId);const f=r&&filesFor(r)[index];
+  if(!f)return;
+  // Création immédiate de l'onglet : compatible navigateurs mobiles.
+  const tab=window.open('about:blank','_blank');
+  try{
+    const {data,error}=await api.storage.from(BUCKET).createSignedUrl(f.file_path,120);
+    if(error||!data?.signedUrl)throw new Error('Impossible de consulter ce fichier.');
+    if(tab){tab.opener=null;tab.location.replace(data.signedUrl);}else window.location.assign(data.signedUrl);
+  }catch(e){if(tab)tab.close();toast(e.message||'Fichier indisponible.',true);}
 }
-function fillStudentOptions() {
-  const active = students.filter((s)=>s.active);
-  const options = active.map((s)=>`<option value="${escapeHtml(s.id)}">${escapeHtml(s.display_name)} (${escapeHtml(s.identifier)})</option>`).join('');
-  const chosen = $('resource-student').value;
-  $('resource-student').innerHTML = '<option value="">Sélectionner un élève</option>' + options;
-  if (active.some(s=>s.id===chosen)) $('resource-student').value = chosen;
-  $('admin-filter-student').innerHTML = '<option value="all">Tous les élèves</option>' + students.map((s)=>`<option value="${escapeHtml(s.id)}">${escapeHtml(s.display_name)}</option>`).join('');
+function studentOpts(){
+  const selected=$('resource-student').value;
+  $('resource-student').innerHTML='<option value="">Sélectionner un élève</option>'+students.filter(s=>s.active).map(s=>`<option value="${esc(s.id)}">${esc(s.display_name)} (${esc(s.identifier)})</option>`).join('');
+  if(students.some(s=>s.id===selected))$('resource-student').value=selected;
+  const selectedFilter=$('admin-filter-student').value;
+  $('admin-filter-student').innerHTML='<option value="all">Tous les élèves</option>'+students.map(s=>`<option value="${esc(s.id)}">${esc(s.display_name)}</option>`).join('');
+  $('admin-filter-student').value=students.some(s=>s.id===selectedFilter)?selectedFilter:'all';
 }
-async function loadAdmin() {
-  if (myProfile?.role !== 'admin') return;
-  const [pr,rr] = await Promise.all([
+async function loadAdmin(){
+  if(myProfile?.role!=='admin')return;
+  const [pr,rr,fr,mr]=await Promise.all([
     api.from('profiles').select('id,identifier,display_name,active,created_at').eq('role','student').order('display_name'),
-    api.from('resources').select('*').order('added_at',{ascending:false})
+    api.from('resources').select('*').order('added_at',{ascending:false}),
+    api.from('resource_files').select('*'),
+    api.from('resource_messages').select('id,resource_id,student_id,sender_role,body,created_at').order('created_at',{ascending:false}).limit(1200)
   ]);
-  if (pr.error || rr.error) {showMessage('Échec du chargement du panneau admin : vérifie les règles Supabase.',true);return;}
-  students=pr.data || []; resources=rr.data || [];
-  $('admin-count').textContent=`${students.length} élève${students.length>1?'s':''} · ${resources.length} document${resources.length>1?'s':''}`;
-  fillStudentOptions();
-  renderAdminStudents(); renderAdminResources();
+  if(pr.error||rr.error||fr.error||mr.error){toast('Chargement admin impossible : exécute la migration SQL V2.',true);return;}
+  students=pr.data||[];resources=rr.data||[];attachments=fr.data||[];messages=mr.data||[];
+  $('admin-count').textContent=`${students.length} élève${students.length>1?'s':''} · ${resources.length} envoi${resources.length>1?'s':''}`;
+  studentOpts();renderAdminStudents();renderAdminResources();renderThreads();
 }
-function renderAdminStudents() {
-  $('admin-students').innerHTML = students.length ? students.map(s=>`
+function renderAdminStudents(){
+  $('admin-students').innerHTML=students.length?students.map(s=>`
     <div class="admin-row">
-      <div class="admin-row-head"><strong>${escapeHtml(s.display_name)}</strong><span class="tag ${s.active?'':'controle'}">${s.active?'Actif':'Désactivé'}</span></div>
-      <small>Identifiant : ${escapeHtml(s.identifier)} · ${resources.filter(r=>r.student_id===s.id).length} document(s)</small>
+      <div class="admin-row-head"><strong>${esc(s.display_name)}</strong><span class="tag ${s.active?'':'controle'}">${s.active?'Actif':'Désactivé'}</span></div>
+      <small>${esc(s.identifier)} · ${resources.filter(r=>r.student_id===s.id).length} envoi(s)</small>
       <div class="admin-row-actions">
-        <button class="tiny" data-admin-action="reset" data-id="${escapeHtml(s.id)}">Changer le mot de passe</button>
-        <button class="tiny" data-admin-action="rename" data-id="${escapeHtml(s.id)}">Renommer</button>
-        <button class="tiny ${s.active?'danger':''}" data-admin-action="toggle" data-id="${escapeHtml(s.id)}">${s.active?'Désactiver':'Réactiver'}</button>
+        <button class="tiny" data-admin-action="reset" data-id="${esc(s.id)}">Réinitialiser le mot de passe</button>
+        <button class="tiny" data-admin-action="rename" data-id="${esc(s.id)}">Renommer</button>
+        <button class="tiny ${s.active?'danger':''}" data-admin-action="toggle" data-id="${esc(s.id)}">${s.active?'Désactiver':'Réactiver'}</button>
       </div>
-    </div>`).join('') : '<p class="muted small">Aucun élève pour le moment.</p>';
+    </div>`).join(''):'<p class="muted small">Aucun élève pour le moment.</p>';
 }
-function renderAdminResources() {
-  const filter = $('admin-filter-student').value;
-  const items = resources.filter(r=>filter==='all'||r.student_id===filter);
-  $('admin-resources').innerHTML = items.length ? items.map((r)=>{
-    const s = students.find(x=>x.id===r.student_id);
+function renderAdminResources(){
+  const target=$('admin-filter-student').value;
+  $('admin-resources').innerHTML=resources.filter(r=>target==='all'||r.student_id===target).map(r=>{
+    const student=students.find(s=>s.id===r.student_id);
     return `<div class="admin-row">
-      <div class="admin-row-head"><strong>${escapeHtml(r.title)}</strong><span class="tag ${escapeHtml(r.category)}">${escapeHtml(CATEGORIES[r.category]||'Autre')}</span></div>
-      <small>${escapeHtml(s?.display_name||'Élève inconnu')} · Ajouté le ${escapeHtml(dateTime(r.added_at))}${r.course_date?' · Cours du '+escapeHtml(courseDate(r.course_date)):''}</small>
+      <div class="admin-row-head"><strong>${esc(r.title)}</strong><span class="tag ${esc(r.category)}">${esc(CATEGORIES[r.category]||'Autre')}</span></div>
+      <small>${esc(student?.display_name||'Élève inconnu')} · Publié le ${esc(formatDate(r.added_at))}${r.course_date?' · Cours du '+esc(courseDate(r.course_date)):''} · ${filesFor(r).length} fichier(s)</small>
       <div class="admin-row-actions">
-        ${r.file_path?`<button type="button" class="tiny" data-admin-resource="open" data-id="${escapeHtml(r.id)}">Voir le fichier</button>`:''}
-        <button type="button" class="tiny" data-admin-resource="edit" data-id="${escapeHtml(r.id)}">Modifier</button>
-        <button type="button" class="tiny danger" data-admin-resource="delete" data-id="${escapeHtml(r.id)}">Supprimer</button>
+        <button class="tiny" data-admin-resource="chat" data-id="${esc(r.id)}">Discussion</button>
+        <button class="tiny" data-admin-resource="edit" data-id="${esc(r.id)}">Modifier / fichiers</button>
+        <button class="tiny danger" data-admin-resource="delete" data-id="${esc(r.id)}">Supprimer</button>
       </div></div>`;
-  }).join('') : '<p class="muted small">Aucun document dans cette sélection.</p>';
+  }).join('')||'<p class="muted small">Aucun document pour cette sélection.</p>';
 }
-async function callAdmin(body) {
-  const {data,error} = await api.functions.invoke('manage-students',{body});
-  if (error) {
-    let msg = error.message || 'Action refusée.';
-    try {const payload=await error.context?.json();if(payload?.error)msg=payload.error;} catch (_) {}
-    throw new Error(msg);
+function renderThreads(){
+  const seen=new Set(),threads=[];
+  for(const m of messages){
+    if(seen.has(m.resource_id))continue;seen.add(m.resource_id);
+    const r=resources.find(x=>x.id===m.resource_id);if(!r)continue;
+    const s=students.find(x=>x.id===r.student_id);
+    threads.push(`<div class="admin-row"><div class="thread-summary"><strong>${esc(r.title)}</strong><small>${esc(s?.display_name||'Élève')} · ${esc(formatDate(m.created_at))}</small><small>${esc(m.sender_role==='student'?'Élève : ':'Administration : ')}${esc(m.body.slice(0,130))}${m.body.length>130?'…':''}</small></div><div class="admin-row-actions"><button type="button" class="tiny" data-thread-chat="${esc(r.id)}">Ouvrir</button></div></div>`);
   }
-  if (data?.error) throw new Error(data.error);
-  return data;
+  $('admin-threads').innerHTML=threads.join('')||'<p class="muted small">Aucun message pour le moment.</p>';
 }
-async function createStudent(event) {
-  event.preventDefault(); clearResult('create-result'); busy('create-student-button',true);
-  const identifier = $('create-id').value.trim().toLowerCase();
-  const password = $('create-password').value;
-  const name = $('create-name').value.trim();
-  try {
-    const data = await callAdmin({action:'create',identifier,password,display_name:name});
-    showResult('create-result',`Compte créé !\nIdentifiant : ${data.identifier}\nMot de passe : ${password}\n\nRecopie ces identifiants et communique-les à l'élève par un moyen approprié. Ils ne seront plus affichés après avoir quitté ce formulaire.`);
-    $('create-name').value='';$('create-id').value='';$('create-password').value='';
-    await loadAdmin();
-  }catch(e){showResult('create-result',e.message,true);} finally{busy('create-student-button',false);}
+async function callAdmin(payload){
+  const {data,error}=await api.functions.invoke('manage-students',{body:payload});
+  if(error){let msg=error.message||'Action refusée.';try{const v=await error.context?.json();if(v?.error)msg=v.error;}catch(_){}throw new Error(msg);}
+  if(data?.error)throw new Error(data.error);return data;
 }
-async function studentAction(action,id) {
-  const s=students.find(x=>x.id===id); if(!s)return;
-  try {
-    if(action==='reset') {
-      const password=prompt(`Nouveau mot de passe pour ${s.display_name} (12 caractères minimum) :`,generatePassword());
+async function createStudent(e){
+  e.preventDefault();clear('create-result');$('create-student-button').disabled=true;
+  const identifier=$('create-id').value.trim().toLowerCase(),password=$('create-password').value,display_name=$('create-name').value.trim();
+  try{
+    const result=await callAdmin({action:'create',identifier,password,display_name});
+    feedback('create-result',`Compte créé.\nIdentifiant : ${result.identifier}\nMot de passe : ${password}\nTransmets ces informations en privé.`);
+    $('create-name').value='';$('create-id').value='';$('create-password').value='';await loadAdmin();
+  }catch(err){feedback('create-result',err.message,true);}finally{$('create-student-button').disabled=false;}
+}
+async function studentAction(action,id){
+  const student=students.find(s=>s.id===id);if(!student)return;
+  try{
+    if(action==='reset'){
+      const password=prompt(`Nouveau mot de passe pour ${student.display_name} :`,makePassword());
       if(password===null)return;
       await callAdmin({action:'reset_password',student_id:id,password});
-      showMessage(`Mot de passe changé pour ${s.display_name}. Nouveau : ${password} — transmets-le à l'élève.`);
-    } else if(action==='toggle') {
-      if(!confirm(`${s.active?'Désactiver':'Réactiver'} le compte de ${s.display_name} ?`))return;
-      const {error}=await api.from('profiles').update({active:!s.active}).eq('id',id);
-      if(error)throw error;
-      showMessage('Accès mis à jour.');await loadAdmin();
-    } else if(action==='rename') {
-      const name=prompt('Nouveau nom affiché :',s.display_name);
-      if(name===null)return;
-      if(!name.trim()||name.trim().length>70)throw new Error('Nom invalide.');
-      const {error}=await api.from('profiles').update({display_name:name.trim()}).eq('id',id);
-      if(error)throw error;
+      // Ne jamais afficher le mot de passe dans les toasts persistants de l'interface.
+      feedback('create-result',`Nouveau mot de passe pour ${student.display_name} : ${password}\nÀ transmettre en privé puis à effacer de l'écran.`);
+    }else if(action==='toggle'){
+      if(!confirm(`${student.active?'Désactiver':'Réactiver'} le compte de ${student.display_name} ?`))return;
+      const {error}=await api.from('profiles').update({active:!student.active}).eq('id',id);if(error)throw error;
+      await loadAdmin();toast('Accès mis à jour.');
+    }else if(action==='rename'){
+      const name=prompt('Nom affiché :',student.display_name);if(name===null)return;
+      if(!name.trim()||name.length>70)throw new Error('Nom invalide.');
+      const {error}=await api.from('profiles').update({display_name:name.trim()}).eq('id',id);if(error)throw error;
       await loadAdmin();
     }
-  }catch(e){showMessage(e.message||'Erreur lors de la modification.',true);}
+  }catch(err){toast(err.message,true);}
 }
-function resetResourceForm() {
-  $('resource-form').reset(); $('resource-edit-id').value='';
-  $('resource-submit').textContent='Publier pour cet élève';
-  $('resource-cancel').hidden=true; editingResource=null;
-  clearResult('resource-result');
+function resetResourceForm(){
+  $('resource-form').reset();$('resource-edit-id').value='';$('resource-student').disabled=false;
+  $('resource-submit').textContent='Publier pour cet élève';$('resource-cancel').hidden=true;
+  $('resource-existing-files').hidden=true;$('resource-existing-files').innerHTML='';editingResource=null;clear('resource-result');
 }
-function editResource(id) {
-  const r=resources.find(x=>x.id===id); if(!r)return;
-  editingResource=r;
-  $('resource-edit-id').value=r.id; $('resource-student').value=r.student_id;
-  $('resource-title').value=r.title; $('resource-category').value=r.category;
+function editResource(id){
+  const r=resources.find(x=>x.id===id);if(!r)return;
+  editingResource=r;$('resource-edit-id').value=r.id;
+  $('resource-student').value=r.student_id;$('resource-student').disabled=true;
+  $('resource-title').value=r.title;$('resource-category').value=r.category;
   $('resource-course-date').value=r.course_date||'';
-  $('resource-description').value=r.description||'';
-  $('resource-content').value=r.content||'';
-  $('resource-file').value='';
-  $('resource-submit').textContent='Enregistrer les modifications';
-  $('resource-cancel').hidden=false; clearResult('resource-result');
-  $('resource-form').scrollIntoView({behavior:'smooth',block:'center'});
+  $('resource-description').value=r.description||'';$('resource-content').value=r.content||'';$('resource-file').value='';
+  $('resource-submit').textContent='Enregistrer les modifications';$('resource-cancel').hidden=false;clear('resource-result');
+  const existing=filesFor(r);$('resource-existing-files').hidden=!existing.length;
+  $('resource-existing-files').innerHTML=existing.length?`<h4>Fichiers actuels (${existing.length})</h4>`+existing.map((f,i)=>
+    `<div class="existing-file"><span>${esc(f.file_name)}</span>${f.id?`<button type="button" class="tiny danger" data-remove-attachment="${esc(f.id)}">Retirer</button>`:'<span class="hint">Fichier principal</span>'}</div>`).join(''):'';
+  $('resource-form').scrollIntoView({behavior:'smooth',block:'start'});
 }
-async function saveResource(event) {
-  event.preventDefault(); clearResult('resource-result');busy('resource-submit',true);
-  const target=$('resource-student').value; const file=$('resource-file').files[0];
-  const content=$('resource-content').value.trim();
-  const title=$('resource-title').value.trim();
-  let newPath=null;
-  try {
-    if (!students.some(s=>s.id===target)) throw new Error('Sélectionne un élève valide.');
-    if(!title || title.length>130) throw new Error('Le titre est obligatoire.');
-    if(!file && !content && !editingResource?.file_path)throw new Error('Joins un fichier ou rédige des consignes.');
-    if(editingResource?.file_path && editingResource.student_id!==target && !file)
-      throw new Error('Pour changer le destinataire de ce document, joins à nouveau son fichier.');
-    if(file) {
-      const ext=file.name.split('.').pop()?.toLowerCase();
-      if(!['pdf','png','jpg','jpeg','webp','docx'].includes(ext))throw new Error('Format autorisé : PDF, PNG, JPG, WEBP ou DOCX.');
-      if(file.size>15*1024*1024)throw new Error('Fichier trop volumineux : maximum 15 Mo.');
-      const clean = file.name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9._-]/g,'_').slice(-100);
-      newPath=`${target}/${crypto.randomUUID()}-${clean}`;
-      const {error:uploadError}=await api.storage.from(BUCKET).upload(newPath,file,{upsert:false,contentType:file.type||'application/octet-stream'});
-      if(uploadError)throw new Error(`Échec de l'envoi du fichier : ${uploadError.message}`);
-    }
-    const payload={student_id:target,title,category:$('resource-category').value,
+function validateFiles(files){
+  if(files.length>10)throw new Error('Maximum 10 nouveaux fichiers par envoi.');
+  for(const f of files){
+    const extension=f.name.split('.').pop()?.toLowerCase();
+    if(!['pdf','png','jpg','jpeg','webp','docx'].includes(extension))throw new Error(`Type non autorisé : ${f.name}`);
+    if(f.size>MAX_SIZE)throw new Error(`Trop volumineux (15 Mo max) : ${f.name}`);
+  }
+}
+async function uploadFiles(studentId,files){
+  const result=[];
+  for(const f of files){
+    const cleaned=f.name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9._-]/g,'_').slice(-90);
+    const path=`${studentId}/${crypto.randomUUID()}-${cleaned}`;
+    const {error}=await api.storage.from(BUCKET).upload(path,f,{upsert:false,contentType:f.type||'application/octet-stream'});
+    if(error){const err=new Error(`Échec du téléversement de ${f.name} : ${error.message}`);err.uploaded=result;throw err;}
+    result.push({file_path:path,file_name:f.name});
+  }
+  return result;
+}
+async function saveResource(e){
+  e.preventDefault();clear('resource-result');$('resource-submit').disabled=true;
+  const studentId=editingResource?.student_id||$('resource-student').value;
+  const files=[...$('resource-file').files];const content=$('resource-content').value.trim();const title=$('resource-title').value.trim();
+  let uploaded=[],createdResource=null,wasSaved=false;
+  try{
+    if(!students.some(s=>s.id===studentId&&(s.active||editingResource)))throw new Error('Sélectionne un élève actif.');
+    if(!title||title.length>130)throw new Error('Titre obligatoire (130 caractères maximum).');
+    validateFiles(files);
+    if(!files.length&&!content&&(!editingResource||!filesFor(editingResource).length))throw new Error('Ajoute au moins un fichier ou des consignes.');
+    if(files.length)uploaded=await uploadFiles(studentId,files);
+    const hasMain=Boolean(editingResource?.file_path);
+    const shouldSetMain=uploaded.length&&!hasMain;
+    const firstMain=shouldSetMain?uploaded[0]:null;
+    const extras=shouldSetMain?uploaded.slice(1):uploaded;
+    const payload={title,student_id:studentId,category:$('resource-category').value,
       description:$('resource-description').value.trim()||null,content:content||null,
       course_date:$('resource-course-date').value||null};
-    if(newPath){payload.file_path=newPath;payload.file_name=file.name;}
-    let result;
-    if(editingResource) {
-      result=await api.from('resources').update(payload).eq('id',editingResource.id).select('id').single();
-    } else {
-      result=await api.from('resources').insert({...payload,file_path:newPath,file_name:file?.name||null}).select('id').single();
+    if(firstMain){payload.file_path=firstMain.file_path;payload.file_name=firstMain.file_name;}
+    let saved;
+    if(editingResource){
+      const {data,error}=await api.from('resources').update(payload).eq('id',editingResource.id).select('id').single();
+      if(error)throw error;saved=data;
+    }else{
+      const {data,error}=await api.from('resources').insert({...payload,file_path:firstMain?.file_path||null,file_name:firstMain?.file_name||null}).select('id').single();
+      if(error)throw error;saved=data;createdResource=saved.id;
     }
-    if(result.error)throw result.error;
-    const oldPath=editingResource?.file_path;
-    if(newPath && oldPath && oldPath!==newPath)await api.storage.from(BUCKET).remove([oldPath]);
-    showMessage(editingResource?'Document modifié.':'Document publié pour l’élève.');
-    resetResourceForm();
-    await loadAdmin();
-  }catch(e){
-    // Nettoyage des fichiers téléversés si leur fiche n'a pas été enregistrée.
-    if(newPath) {
-      const {data} = await api.from('resources').select('id').eq('file_path',newPath).maybeSingle();
-      if(!data)await api.storage.from(BUCKET).remove([newPath]);
+    if(extras.length){
+      const {error}=await api.from('resource_files').insert(extras.map(f=>({...f,resource_id:saved.id})));
+      if(error)throw error;
     }
-    showResult('resource-result',e.message||'Échec de publication.',true);
-  }finally{busy('resource-submit',false);}
+    wasSaved=true;
+    resetResourceForm();await loadAdmin();toast('Document enregistré avec ses fichiers.');
+  }catch(err){
+    const toClean=err.uploaded||uploaded;
+    // Une création incomplète est annulée afin de ne pas laisser une ressource sans pièces jointes.
+    if(createdResource){await api.from('resources').delete().eq('id',createdResource);}
+    // Pour une modification, un échec après UPDATE peut avoir conservé les métadonnées :
+    // ne nettoyer que les objets non référencés.
+    if(toClean.length){
+      const unused=[];
+      for(const f of toClean){
+        const [r1,r2]=await Promise.all([
+          api.from('resources').select('id').eq('file_path',f.file_path).maybeSingle(),
+          api.from('resource_files').select('id').eq('file_path',f.file_path).maybeSingle()
+        ]);
+        if(!r1.data&&!r2.data)unused.push(f.file_path);
+      }
+      if(unused.length)await api.storage.from(BUCKET).remove(unused);
+    }
+    feedback('resource-result',err.message||'Échec de publication.',true);
+  }finally{$('resource-submit').disabled=false;}
 }
-async function deleteResource(id) {
-  const r=resources.find(x=>x.id===id);if(!r)return;
-  if(!confirm(`Supprimer définitivement « ${r.title} » ?`))return;
+async function removeAttachment(id){
+  const f=attachments.find(f=>f.id===id);if(!f||!confirm(`Retirer définitivement « ${f.file_name} » ?`))return;
+  const {error}=await api.from('resource_files').delete().eq('id',id);if(error){toast(error.message,true);return;}
+  const {error:se}=await api.storage.from(BUCKET).remove([f.file_path]);
+  await loadAdmin();if(editingResource)editResource(editingResource.id);
+  toast(se?'Référence retirée. Nettoyage du fichier à vérifier dans Supabase.':'Fichier retiré.',Boolean(se));
+}
+async function deleteResource(id){
+  const r=resources.find(x=>x.id===id);if(!r||!confirm(`Supprimer « ${r.title} », tous ses fichiers ET sa discussion ?`))return;
+  const paths=filesFor(r).map(f=>f.file_path);
   const {error}=await api.from('resources').delete().eq('id',id);
-  if(error){showMessage(error.message,true);return;}
-  let storageProblem=false;
-  if(r.file_path){const {error:storageError}=await api.storage.from(BUCKET).remove([r.file_path]);storageProblem=Boolean(storageError);}
-  if(editingResource?.id===id)resetResourceForm();
-  await loadAdmin();
-  showMessage(storageProblem ? 'Fiche supprimée, mais le fichier doit être nettoyé manuellement dans Supabase.' : 'Document supprimé.',storageProblem);
+  if(error){toast(error.message,true);return;}
+  if(paths.length){const {error:se}=await api.storage.from(BUCKET).remove(paths);if(se)toast('Envoi supprimé, mais certains fichiers restent à nettoyer dans Supabase.',true);}
+  if(editingResource?.id===id)resetResourceForm();await loadAdmin();toast('Envoi et discussion supprimés.');
 }
-async function boot() {
+async function openChat(resourceId){
+  const r=[...resources,...studentResources].find(x=>x.id===resourceId);if(!r)return;
+  openedChat=resourceId;$('chat-title').textContent='Discussion';$('chat-subtitle').textContent=r.title;
+  $('chat-input').value='';clear('chat-error');$('chat-messages').innerHTML='<p class="chat-empty">Chargement…</p>';
+  $('chat-dialog').showModal();await refreshChat();
+}
+async function refreshChat(){
+  if(!openedChat)return;
+  const {data,error}=await api.from('resource_messages')
+    .select('id,body,sender_role,sender_id,created_at').eq('resource_id',openedChat).order('created_at',{ascending:true}).limit(500);
+  if(error){feedback('chat-error','Impossible de charger cette discussion.',true);return;}
+  const entries=data||[];
+  $('chat-messages').innerHTML=entries.length?entries.map(m=>`
+    <div class="chat-message ${m.sender_id===myProfile?.id?'own':''}">
+      <small>${m.sender_role==='student'?'Élève':'Réponse'} · ${esc(formatDate(m.created_at))}</small>
+      <p>${esc(m.body)}</p>
+    </div>`).join(''):'<p class="chat-empty">Aucun message. Écris ta question ici.</p>';
+  $('chat-messages').scrollTop=$('chat-messages').scrollHeight;
+}
+async function sendMessage(e){
+  e.preventDefault();clear('chat-error');if(!openedChat)return;
+  const body=$('chat-input').value.trim();if(!body)return;
+  $('chat-send').disabled=true;
+  try{
+    const {data,error}=await api.functions.invoke('send-message',{body:{resource_id:openedChat,message:body}});
+    if(error){let msg=error.message||'Message non envoyé.';try{const obj=await error.context?.json();if(obj?.error)msg=obj.error;}catch(_){}throw new Error(msg);}
+    if(data?.error)throw new Error(data.error);
+    $('chat-input').value='';await refreshChat();
+    if(myProfile.role==='student'&&data.notification!=='sent'){
+      toast('Message enregistré. La notification par e-mail n’a pas été confirmée : vérifie avec le responsable si nécessaire.',true);
+    }else toast('Message envoyé.');
+    if(myProfile.role==='admin')await loadAdmin();
+  }catch(err){feedback('chat-error',err.message||'Impossible d’envoyer le message.',true)}
+  finally{$('chat-send').disabled=false;}
+}
+async function boot(){
   page('login');
   $('global-message').addEventListener('click',()=>{$('global-message').hidden=true;});
   $('login-form').addEventListener('submit',signIn);
   $('logout').addEventListener('click',signOut);
-  $('nav-admin').addEventListener('click',()=>{$('admin-section').scrollIntoView({behavior:'smooth'});});
-  $('nav-student').addEventListener('click',()=>{$('student-section').scrollIntoView({behavior:'smooth'});});
+  $('change-password-button').addEventListener('click',()=>{$('password-form').reset();clear('password-error');$('password-dialog').showModal();});
+  $('password-close').addEventListener('click',()=>$('password-dialog').close());
+  $('password-form').addEventListener('submit',changePassword);
+  $('chat-close').addEventListener('click',()=>$('chat-dialog').close());
+  $('chat-dialog').addEventListener('close',()=>{openedChat=null;});
+  $('chat-form').addEventListener('submit',sendMessage);
+  $('chat-refresh').addEventListener('click',refreshChat);
   ['student-search','student-type','student-sort'].forEach(id=>$(id).addEventListener(id==='student-search'?'input':'change',renderStudent));
-  $('student-list').addEventListener('click',(event)=>{
-    const open=event.target.closest('[data-open-file]');if(open){openFile(open.dataset.openFile);return;}
-    const toggle=event.target.closest('[data-toggle-text]');if(!toggle)return;
-    const el=document.querySelector(`[data-content="${toggle.dataset.toggleText}"]`);
-    if(el){el.hidden=!el.hidden;toggle.setAttribute('aria-expanded',String(!el.hidden));toggle.textContent=el.hidden?'Lire les consignes':'Masquer les consignes';}
+  $('student-list').addEventListener('click',(e)=>{
+    const f=e.target.closest('[data-open-file]');if(f){openFile(f.dataset.openFile,Number(f.dataset.fileIndex));return;}
+    const c=e.target.closest('[data-chat]');if(c){openChat(c.dataset.chat);return;}
+    const t=e.target.closest('[data-toggle-text]');if(!t)return;
+    const content=document.querySelector(`[data-content="${t.dataset.toggleText}"]`);
+    if(content){content.hidden=!content.hidden;t.textContent=content.hidden?'Lire les consignes':'Masquer les consignes';}
   });
-  $('generate-password').addEventListener('click',()=>{$('create-password').value=generatePassword();});
+  $('generate-password').addEventListener('click',()=>{$('create-password').value=makePassword();});
   $('create-student-form').addEventListener('submit',createStudent);
   $('resource-form').addEventListener('submit',saveResource);
   $('resource-cancel').addEventListener('click',resetResourceForm);
+  $('resource-existing-files').addEventListener('click',(e)=>{const b=e.target.closest('[data-remove-attachment]');if(b)removeAttachment(b.dataset.removeAttachment);});
   $('admin-refresh').addEventListener('click',loadAdmin);
   $('admin-filter-student').addEventListener('change',renderAdminResources);
-  $('admin-students').addEventListener('click',(event)=>{const el=event.target.closest('[data-admin-action]');if(el)studentAction(el.dataset.adminAction,el.dataset.id);});
-  $('admin-resources').addEventListener('click',(event)=>{const el=event.target.closest('[data-admin-resource]');if(!el)return;
-    if(el.dataset.adminResource==='open')openFile(el.dataset.id);
-    if(el.dataset.adminResource==='edit')editResource(el.dataset.id);
-    if(el.dataset.adminResource==='delete')deleteResource(el.dataset.id);
+  $('admin-students').addEventListener('click',(e)=>{const b=e.target.closest('[data-admin-action]');if(b)studentAction(b.dataset.adminAction,b.dataset.id);});
+  $('admin-resources').addEventListener('click',(e)=>{const b=e.target.closest('[data-admin-resource]');if(!b)return;
+    if(b.dataset.adminResource==='chat')openChat(b.dataset.id);
+    if(b.dataset.adminResource==='edit')editResource(b.dataset.id);
+    if(b.dataset.adminResource==='delete')deleteResource(b.dataset.id);
   });
-  const conf=requireConfig(); if(!conf)return;
-  try {
-    api=createClient(conf.supabaseUrl,conf.publishableKey,{auth:{autoRefreshToken:true,persistSession:true,detectSessionInUrl:false}});
+  $('admin-threads').addEventListener('click',(e)=>{const b=e.target.closest('[data-thread-chat]');if(b)openChat(b.dataset.threadChat);});
+  $('refresh-messages').addEventListener('click',loadAdmin);
+  const config=validConfig();if(!config)return;
+  try{
+    api=createClient(config.supabaseUrl,config.publishableKey,{auth:{autoRefreshToken:true,persistSession:true,detectSessionInUrl:false}});
     const {data:{session}}=await api.auth.getSession();
     if(session)await loadMySpace();
-  } catch (_) {showResult('login-error','Impossible de se connecter au service. Vérifie la configuration.',true);}
+  }catch(_){feedback('login-error','Impossible de joindre le service.',true);}
 }
 boot();

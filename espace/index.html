@@ -15,56 +15,43 @@
   <link rel="stylesheet" href="./espace.css">
 </head>
 <body>
-<header class="site-header">
-  <div class="wrap header-inner">
-    <a class="brand" href="../index.html" title="Retourner au site principal">
-      <img src="../images/logo.png" alt="" width="50" height="50">
-      <span><strong>Maths pratiques de Samuel</strong><small>Espace personnel</small></span>
+<header class="header site-header">
+  <div class="container nav header-inner">
+    <a class="logo brand" href="../index.html" title="Accueil du site principal">
+      <img src="../images/logo.png" alt="" class="logo-img" width="80" height="80">
+      <span>Maths pratiques de Samuel</span>
     </a>
-    <nav class="header-nav" aria-label="Navigation">
-      <a href="../index.html">Site principal <span aria-hidden="true">↗</span></a>
-      <button type="button" class="nav-link" id="nav-admin" hidden>Administration</button>
-      <button type="button" class="nav-link" id="nav-student" hidden>Mes documents</button>
-      <button type="button" class="nav-link logout" id="logout" hidden>Se déconnecter</button>
+    <nav class="header-nav" aria-label="Navigation principale">
+      <a href="../index.html">Site principal</a>
+      <button type="button" class="nav-link" id="change-password-button" hidden>Mot de passe</button>
+      <button type="button" class="nav-link logout" id="logout" hidden>Déconnexion</button>
     </nav>
   </div>
 </header>
 <main class="wrap" id="main">
   <section class="login-layout" id="login-section">
-    <div class="intro">
-      <span class="eyebrow">UN ACCOMPAGNEMENT ADAPTÉ À CHACUN</span>
-      <h1>Ton espace de travail <em>personnel.</em></h1>
-      <p>Retrouve les cours, exercices, contrôles et corrections que Samuel a préparés pour toi. Tout est classé par date, avec les nouveautés en premier.</p>
-      <div class="intro-points">
-        <span>✓ Documents adaptés à ton niveau</span>
-        <span>✓ Date d'ajout et date du cours</span>
-        <span>✓ Accessible sur téléphone et ordinateur</span>
-      </div>
-    </div>
-    <div class="panel login-panel">
-      <span class="panel-icon" aria-hidden="true">✦</span>
-      <h2>Connexion à mon espace</h2>
-      <p class="muted">Entre l'identifiant et le mot de passe fournis par Samuel.</p>
-      <form id="login-form" class="stack">
-        <label>Identifiant
-          <input id="login-identifier" name="identifier" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Ex. : mathilde3e" required>
-        </label>
-        <label>Mot de passe
-          <input id="login-password" name="password" type="password" autocomplete="current-password" placeholder="Ton mot de passe" required>
-        </label>
-        <button class="btn primary" type="submit" id="login-submit">Accéder à mon espace <span aria-hidden="true">→</span></button>
-        <p class="hint">Pas d'inscription en ligne : Samuel crée chaque compte et remet personnellement les identifiants.</p>
-        <p class="error" id="login-error" role="alert" hidden></p>
-      </form>
-    </div>
-  </section>
+  <div class="panel login-panel">
+    <h1>Espace élève</h1>
+    <p class="muted">Cours, exercices et corrections.</p>
+    <form id="login-form" class="stack">
+      <label>Identifiant
+        <input id="login-identifier" name="username" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Identifiant" required>
+      </label>
+      <label>Mot de passe
+        <input id="login-password" name="password" type="password" autocomplete="current-password" placeholder="Mot de passe" required>
+      </label>
+      <button class="btn primary" type="submit" id="login-submit">Se connecter</button>
+      <p class="error" id="login-error" role="alert" hidden></p>
+    </form>
+  </div>
+</section>
 
   <section class="dashboard" id="student-section" hidden>
     <div class="welcome-row">
       <div>
         <span class="eyebrow">ESPACE PERSONNEL ÉLÈVE</span>
         <h1 id="student-greeting">Bonjour !</h1>
-        <p class="muted">Voici les ressources déposées par Samuel pour toi.</p>
+        <p class="muted">Retrouve ici tes documents et leurs dates de publication.</p>
       </div>
       <div class="summary" id="student-count" aria-live="polite">0 document</div>
     </div>
@@ -76,20 +63,20 @@
         <select id="student-type"><option value="all">Tous les documents</option><option value="cours">Cours</option><option value="exercices">Exercices</option><option value="correction">Corrections</option><option value="controle">Contrôles</option><option value="autre">Autres</option></select>
       </label>
       <label>Trier les documents
-        <select id="student-sort"><option value="new">Plus récents d'abord</option><option value="old">Plus anciens d'abord</option><option value="az">Ordre alphabétique (A–Z)</option></select>
+        <select id="student-sort"><option value="new">Plus récents d'abord</option><option value="old">Plus anciens d'abord</option><option value="az">Ordre alphabétique (A–Z)</option><option value="za">Ordre alphabétique (Z–A)</option></select>
       </label>
     </div>
     <div id="student-list" class="resource-grid" aria-live="polite"></div>
-    <p class="empty-state" id="student-empty" hidden>Aucun document pour le moment. Samuel ajoutera tes ressources ici après les cours.</p>
-    <p class="subtle-footer">Une question sur un exercice ? Tu peux écrire à <a href="mailto:mathspratiquesdesamuel@gmail.com">Samuel</a>.</p>
+    <p class="empty-state" id="student-empty" hidden>Aucun document pour le moment.</p>
+    
   </section>
 
   <section class="dashboard" id="admin-section" hidden>
     <div class="welcome-row">
       <div>
         <span class="eyebrow">ADMINISTRATION PRIVÉE</span>
-        <h1>Tableau de bord de Samuel</h1>
-        <p class="muted">Créer des élèves, distribuer des cours et gérer les documents de chacun.</p>
+        <h1>Administration</h1>
+        <p class="muted">Gérer les comptes, documents et discussions.</p>
       </div>
       <div class="summary" id="admin-count">Gestion des élèves</div>
     </div>
@@ -114,7 +101,7 @@
         </section>
         <section class="panel admin-panel">
           <h2>2. Ajouter un document</h2>
-          <p class="muted small">Tu peux déposer un fichier PDF, une image ou un document Word, ou rédiger des consignes directement.</p>
+          <p class="muted small">Un même envoi peut contenir plusieurs fichiers.</p>
           <form class="stack" id="resource-form">
             <input type="hidden" id="resource-edit-id">
             <label>Élève destinataire
@@ -137,10 +124,11 @@
             <label>Énoncé ou consignes écrites (facultatif)
               <textarea id="resource-content" rows="5" maxlength="12000" placeholder="Tu peux écrire directement un exercice ici, sans fichier joint."></textarea>
             </label>
-            <label>Fichier à joindre (facultatif — 15 Mo maximum)
-              <input type="file" id="resource-file" accept=".pdf,.png,.jpg,.jpeg,.webp,.docx">
+            <label>Joindre des fichiers (15 Mo maximum par fichier)
+              <input type="file" id="resource-file" accept=".pdf,.png,.jpg,.jpeg,.webp,.docx" multiple>
             </label>
-            <p class="hint">Au moins un fichier OU des consignes écrites. La date d'ajout est enregistrée automatiquement.</p>
+            <div id="resource-existing-files" class="existing-files" hidden></div>
+            <p class="hint">Un ou plusieurs fichiers, ou des consignes écrites. La date de publication est automatique.</p>
             <div class="actions-inline">
               <button type="submit" class="btn primary" id="resource-submit">Publier pour cet élève</button>
               <button type="button" class="btn ghost" id="resource-cancel" hidden>Annuler la modification</button>
@@ -162,9 +150,36 @@
           </label>
           <div class="admin-resources" id="admin-resources"></div>
         </section>
+        <section class="panel admin-panel">
+          <div class="section-heading"><h2>5. Questions des élèves</h2><button type="button" class="text-button" id="refresh-messages">Actualiser</button></div>
+          <p class="muted small">Les conversations restent rattachées aux documents concernés.</p>
+          <div id="admin-threads" class="admin-resources"></div>
+        </section>
       </div>
     </div>
   </section>
+  <dialog id="chat-dialog" class="dialog-panel" aria-labelledby="chat-title">
+    <div class="dialog-header"><div><h2 id="chat-title">Discussion</h2><p class="muted small" id="chat-subtitle"></p></div><button class="close-button" type="button" id="chat-close" aria-label="Fermer">×</button></div>
+    <div id="chat-messages" class="chat-messages" aria-live="polite"></div>
+    <form id="chat-form" class="stack">
+      <label>Message
+        <textarea id="chat-input" rows="3" maxlength="2500" placeholder="Écris ta question…" required></textarea>
+      </label>
+      <div class="actions-inline"><button class="btn primary" id="chat-send" type="submit">Envoyer</button><button class="btn ghost" id="chat-refresh" type="button">Actualiser</button></div>
+      <p class="error" id="chat-error" role="alert" hidden></p>
+    </form>
+  </dialog>
+  <dialog id="password-dialog" class="dialog-panel" aria-labelledby="password-title">
+    <div class="dialog-header"><h2 id="password-title">Changer mon mot de passe</h2><button class="close-button" type="button" id="password-close" aria-label="Fermer">×</button></div>
+    <form id="password-form" class="stack">
+      <label>Mot de passe actuel<input id="old-password" type="password" autocomplete="current-password" required></label>
+      <label>Nouveau mot de passe<input id="new-password" type="password" minlength="12" maxlength="100" autocomplete="new-password" required></label>
+      <label>Confirmer le nouveau mot de passe<input id="confirm-password" type="password" minlength="12" maxlength="100" autocomplete="new-password" required></label>
+      <p class="hint">12 caractères minimum. Utilise un mot de passe unique.</p>
+      <button class="btn primary" id="password-submit" type="submit">Enregistrer</button>
+      <p class="error" id="password-error" role="alert" hidden></p>
+    </form>
+  </dialog>
   <div id="global-message" class="toast" role="status" aria-live="polite" hidden></div>
 </main>
 <footer class="site-footer"><div class="wrap">© Maths pratiques de Samuel · <a href="../index.html">Retour au site principal</a></div></footer>

@@ -131,3 +131,5 @@ create policy "samuel_docs_admin_delete" on storage.objects
 -- on conflict (id) do update set role='admin',active=true;
 --
 -- Ne publie jamais ton mot de passe admin ni de clé privée dans GitHub.
+
+-- Pour une installation neuve, exécuter ensuite migration_v2.sql.

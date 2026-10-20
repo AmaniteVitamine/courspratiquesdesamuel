@@ -53,7 +53,7 @@ Deno.serve(async (req: Request) => {
     const {data:profile,error:profileError} = await admin.from('profiles')
       .select('role,active').eq('id',user.id).maybeSingle();
     if (profileError || profile?.role !== 'admin' || !profile.active)
-      return response(403,{error:'Seul Samuel peut effectuer cette opération.'});
+      return response(403,{error:'Accès administrateur requis.'});
 
     const raw = await req.text();
     if(raw.length > 4000) return response(413,{error:'Requête trop longue.'});

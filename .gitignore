@@ -1,0 +1,10 @@
+# Ne jamais publier des secrets ou des fichiers internes
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+*.pem
+*.key
+node_modules/

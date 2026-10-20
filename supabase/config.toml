@@ -1,3 +1,6 @@
 [functions.manage-students]
 # La fonction vérifie elle-même l'identité du demandeur et son rôle admin.
 verify_jwt = false
+[functions.send-message]
+# La fonction vérifie elle-même le JWT et les droits sur le document.
+verify_jwt = false
