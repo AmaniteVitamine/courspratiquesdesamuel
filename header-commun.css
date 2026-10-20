@@ -1,0 +1,223 @@
+/* En-tête commun : Maths pratiques de Samuel.
+   Importé EN DERNIER sur le site public et dans l'espace privé.
+   L'alignement du logo et le style du nom sont partagés. */
+:root {
+  --header-samuel-blue: #2563eb;
+  --header-samuel-ink: #1e293b;
+}
+
+.header,
+.header.site-header {
+  background: rgba(255, 255, 255, .96);
+  border-bottom: 1px solid rgba(226, 232, 240, .9);
+  backdrop-filter: blur(12px);
+}
+
+.header .container.nav,
+.header.site-header .container.nav.header-inner {
+  width: min(1480px, calc(100% - 64px));
+  margin: 0 auto;
+  min-height: 116px;
+  padding: 18px 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+/* Les deux liens logos doivent être strictement identiques. */
+.header .logo,
+.header.site-header .brand.logo {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  flex: 0 0 auto;
+  margin: 0;
+  gap: 60px;
+  font-family: Inter, Arial, sans-serif;
+  font-size: 1.4rem;
+  font-weight: 800;
+  line-height: 1.25;
+  color: var(--header-samuel-blue);
+  text-decoration: none;
+  text-align: left;
+}
+
+.header .logo .logo-img,
+.header.site-header .brand.logo .logo-img {
+  width: 80px;
+  height: 80px;
+  flex: 0 0 80px;
+  object-fit: contain;
+}
+
+.header.site-header .brand.logo span {
+  font: inherit;
+  color: inherit;
+}
+
+/* Page publique : les liens conservent leurs places, le CTA a sa zone à droite. */
+.header:not(.site-header) .nav > nav {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  justify-content: flex-end;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: clamp(10px, 1.15vw, 19px);
+}
+
+.header:not(.site-header) .nav > nav a {
+  white-space: nowrap;
+  font-size: clamp(.85rem, .98vw, 1rem);
+  font-weight: 600;
+  color: var(--header-samuel-ink);
+}
+
+.header:not(.site-header) .nav > nav a:hover { color: var(--header-samuel-blue); }
+
+.header .student-header-button {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-height: 48px;
+  padding: 11px 17px;
+  border: 1px solid #2563eb;
+  border-radius: 14px;
+  background: #2563eb;
+  box-shadow: 0 6px 18px rgba(37, 99, 235, .19);
+  color: #fff;
+  font: 700 .95rem/1.2 Inter, Arial, sans-serif;
+  white-space: nowrap;
+  text-decoration: none;
+  transition: background-color .2s, box-shadow .2s, transform .2s;
+}
+
+.header .student-header-button:hover,
+.header .student-header-button:focus-visible {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+  color: #fff;
+  box-shadow: 0 8px 23px rgba(37, 99, 235, .27);
+  transform: translateY(-1px);
+}
+
+.header .student-header-button svg { flex: 0 0 19px; }
+.header .student-header-arrow { font-size: 1.1rem; line-height: 1; }
+
+/* Espace élèves : le même logo au même emplacement, uniquement ses actions. */
+.header.site-header .header-nav {
+  display: flex;
+  flex: 0 1 auto;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-left: auto;
+}
+
+.header.site-header .header-nav a,
+.header.site-header .header-nav .nav-link {
+  background: transparent;
+  border: 0;
+  padding: 7px 0;
+  margin: 0;
+  font: 600 1rem/1.4 Inter, Arial, sans-serif;
+  color: var(--header-samuel-ink);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.header.site-header .header-nav a:hover,
+.header.site-header .header-nav .nav-link:hover { color: var(--header-samuel-blue); }
+
+@media (max-width: 1450px) and (min-width: 769px) {
+  .header .container.nav,
+  .header.site-header .container.nav.header-inner {
+    width: min(100% - 40px, 1480px);
+    gap: 16px;
+  }
+  .header .logo,
+  .header.site-header .brand.logo {
+    gap: 18px;
+    font-size: 1.12rem;
+  }
+  .header .logo .logo-img,
+  .header.site-header .brand.logo .logo-img {
+    width: 68px;
+    height: 68px;
+    flex-basis: 68px;
+  }
+  .header:not(.site-header) .nav > nav { gap: 9px; }
+  .header:not(.site-header) .nav > nav a { font-size: .87rem; }
+  .header .student-header-button { padding: 10px 12px; font-size: .85rem; }
+}
+
+@media (max-width: 1150px) and (min-width: 769px) {
+  .header:not(.site-header) .nav > nav { flex-wrap: wrap; row-gap: 6px; }
+}
+
+@media (max-width: 768px) {
+  .header,
+  .header.site-header { position: static; backdrop-filter: none; background: #fff; }
+  .header .container.nav,
+  .header.site-header .container.nav.header-inner {
+    min-height: 70px;
+    width: calc(100% - 28px);
+    padding: 13px 0;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .header .logo,
+  .header.site-header .brand.logo {
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: 250px;
+    gap: 10px;
+    font-size: 1.03rem;
+    line-height: 1.15;
+    white-space: normal;
+    text-align: left;
+  }
+  .header .logo .logo-img,
+  .header.site-header .brand.logo .logo-img {
+    width: 42px;
+    height: 42px;
+    flex-basis: 42px;
+  }
+  .header:not(.site-header) .nav > nav { display: none; }
+  .header .student-header-button {
+    min-height: 42px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    font-size: .85rem;
+  }
+  .header.site-header .header-nav { gap: 10px; }
+  /* Le logo du portail ramène déjà au site principal. */
+  .header.site-header .header-nav > a[href="../index.html"] { display: none; }
+  .header.site-header .header-nav .nav-link { padding: 5px; font-size: .8rem; }
+}
+
+@media (max-width: 470px) {
+  .header .logo,
+  .header.site-header .brand.logo {
+    max-width: 185px;
+    gap: 7px;
+    font-size: .88rem;
+  }
+  .header .logo .logo-img,
+  .header.site-header .brand.logo .logo-img {
+    width: 38px;
+    height: 38px;
+    flex-basis: 38px;
+  }
+  .header .student-header-button { font-size: .8rem; padding: 10px 11px; }
+  .header .student-header-button svg, .header .student-header-arrow { display: none; }
+}
