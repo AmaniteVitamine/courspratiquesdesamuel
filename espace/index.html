@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <meta name="theme-color" content="#1f4e85">
+  <meta name="description" content="Espace personnel des élèves de Maths pratiques de Samuel : cours, exercices et corrections.">
+  <title>Espace élèves | Maths pratiques de Samuel</title>
+  <link rel="icon" href="../images/logotop.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./espace.css">
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap header-inner">
+    <a class="brand" href="../index.html" title="Retourner au site principal">
+      <img src="../images/logo.png" alt="" width="50" height="50">
+      <span><strong>Maths pratiques de Samuel</strong><small>Espace personnel</small></span>
+    </a>
+    <nav class="header-nav" aria-label="Navigation">
+      <a href="../index.html">Site principal <span aria-hidden="true">↗</span></a>
+      <button type="button" class="nav-link" id="nav-admin" hidden>Administration</button>
+      <button type="button" class="nav-link" id="nav-student" hidden>Mes documents</button>
+      <button type="button" class="nav-link logout" id="logout" hidden>Se déconnecter</button>
+    </nav>
+  </div>
+</header>
+<main class="wrap" id="main">
+  <section class="login-layout" id="login-section">
+    <div class="intro">
+      <span class="eyebrow">UN ACCOMPAGNEMENT ADAPTÉ À CHACUN</span>
+      <h1>Ton espace de travail <em>personnel.</em></h1>
+      <p>Retrouve les cours, exercices, contrôles et corrections que Samuel a préparés pour toi. Tout est classé par date, avec les nouveautés en premier.</p>
+      <div class="intro-points">
+        <span>✓ Documents adaptés à ton niveau</span>
+        <span>✓ Date d'ajout et date du cours</span>
+        <span>✓ Accessible sur téléphone et ordinateur</span>
+      </div>
+    </div>
+    <div class="panel login-panel">
+      <span class="panel-icon" aria-hidden="true">✦</span>
+      <h2>Connexion à mon espace</h2>
+      <p class="muted">Entre l'identifiant et le mot de passe fournis par Samuel.</p>
+      <form id="login-form" class="stack">
+        <label>Identifiant
+          <input id="login-identifier" name="identifier" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Ex. : mathilde3e" required>
+        </label>
+        <label>Mot de passe
+          <input id="login-password" name="password" type="password" autocomplete="current-password" placeholder="Ton mot de passe" required>
+        </label>
+        <button class="btn primary" type="submit" id="login-submit">Accéder à mon espace <span aria-hidden="true">→</span></button>
+        <p class="hint">Pas d'inscription en ligne : Samuel crée chaque compte et remet personnellement les identifiants.</p>
+        <p class="error" id="login-error" role="alert" hidden></p>
+      </form>
+    </div>
+  </section>
+
+  <section class="dashboard" id="student-section" hidden>
+    <div class="welcome-row">
+      <div>
+        <span class="eyebrow">ESPACE PERSONNEL ÉLÈVE</span>
+        <h1 id="student-greeting">Bonjour !</h1>
+        <p class="muted">Voici les ressources déposées par Samuel pour toi.</p>
+      </div>
+      <div class="summary" id="student-count" aria-live="polite">0 document</div>
+    </div>
+    <div class="panel toolbar">
+      <label>Rechercher
+        <input type="search" id="student-search" placeholder="Titre, chapitre, commentaire…">
+      </label>
+      <label>Type de document
+        <select id="student-type"><option value="all">Tous les documents</option><option value="cours">Cours</option><option value="exercices">Exercices</option><option value="correction">Corrections</option><option value="controle">Contrôles</option><option value="autre">Autres</option></select>
+      </label>
+      <label>Trier les documents
+        <select id="student-sort"><option value="new">Plus récents d'abord</option><option value="old">Plus anciens d'abord</option><option value="az">Ordre alphabétique (A–Z)</option></select>
+      </label>
+    </div>
+    <div id="student-list" class="resource-grid" aria-live="polite"></div>
+    <p class="empty-state" id="student-empty" hidden>Aucun document pour le moment. Samuel ajoutera tes ressources ici après les cours.</p>
+    <p class="subtle-footer">Une question sur un exercice ? Tu peux écrire à <a href="mailto:mathspratiquesdesamuel@gmail.com">Samuel</a>.</p>
+  </section>
+
+  <section class="dashboard" id="admin-section" hidden>
+    <div class="welcome-row">
+      <div>
+        <span class="eyebrow">ADMINISTRATION PRIVÉE</span>
+        <h1>Tableau de bord de Samuel</h1>
+        <p class="muted">Créer des élèves, distribuer des cours et gérer les documents de chacun.</p>
+      </div>
+      <div class="summary" id="admin-count">Gestion des élèves</div>
+    </div>
+    <div class="admin-layout">
+      <div class="admin-column">
+        <section class="panel admin-panel">
+          <h2>1. Créer un élève</h2>
+          <p class="muted small">Seul le panneau admin peut créer les identifiants. L'élève n'a pas besoin d'adresse e-mail.</p>
+          <form id="create-student-form" class="stack">
+            <label>Prénom ou nom affiché
+              <input id="create-name" required maxlength="70" placeholder="Mathilde">
+            </label>
+            <label>Identifiant unique
+              <input id="create-id" required minlength="3" maxlength="32" pattern="[a-zA-Z0-9][a-zA-Z0-9._-]{1,30}[a-zA-Z0-9]" placeholder="mathilde3e" autocapitalize="none" spellcheck="false">
+            </label>
+            <label>Mot de passe initial (12 caractères minimum)
+              <span class="password-row"><input id="create-password" type="text" required minlength="12" autocomplete="off" placeholder="Mot de passe robuste"><button type="button" class="btn ghost compact" id="generate-password">Générer</button></span>
+            </label>
+            <button type="submit" class="btn primary" id="create-student-button">Créer le compte élève</button>
+            <p class="success" id="create-result" role="status" hidden></p>
+          </form>
+        </section>
+        <section class="panel admin-panel">
+          <h2>2. Ajouter un document</h2>
+          <p class="muted small">Tu peux déposer un fichier PDF, une image ou un document Word, ou rédiger des consignes directement.</p>
+          <form class="stack" id="resource-form">
+            <input type="hidden" id="resource-edit-id">
+            <label>Élève destinataire
+              <select id="resource-student" required><option value="">Sélectionner un élève</option></select>
+            </label>
+            <label>Titre du document
+              <input id="resource-title" required maxlength="130" placeholder="Fractions — exercices pour le contrôle de vendredi">
+            </label>
+            <div class="form-grid">
+              <label>Catégorie
+                <select id="resource-category"><option value="exercices">Exercices</option><option value="cours">Cours</option><option value="correction">Correction</option><option value="controle">Contrôle</option><option value="autre">Autre</option></select>
+              </label>
+              <label>Date du cours concerné (facultatif)
+                <input type="date" id="resource-course-date">
+              </label>
+            </div>
+            <label>Message à l'élève (facultatif)
+              <textarea id="resource-description" rows="3" maxlength="1200" placeholder="À faire avant lundi. Commence par les exercices 1 et 2."></textarea>
+            </label>
+            <label>Énoncé ou consignes écrites (facultatif)
+              <textarea id="resource-content" rows="5" maxlength="12000" placeholder="Tu peux écrire directement un exercice ici, sans fichier joint."></textarea>
+            </label>
+            <label>Fichier à joindre (facultatif — 15 Mo maximum)
+              <input type="file" id="resource-file" accept=".pdf,.png,.jpg,.jpeg,.webp,.docx">
+            </label>
+            <p class="hint">Au moins un fichier OU des consignes écrites. La date d'ajout est enregistrée automatiquement.</p>
+            <div class="actions-inline">
+              <button type="submit" class="btn primary" id="resource-submit">Publier pour cet élève</button>
+              <button type="button" class="btn ghost" id="resource-cancel" hidden>Annuler la modification</button>
+            </div>
+            <p class="success" id="resource-result" role="status" hidden></p>
+          </form>
+        </section>
+      </div>
+      <div class="admin-column">
+        <section class="panel admin-panel">
+          <h2>3. Comptes élèves</h2>
+          <div id="admin-students" class="student-admin-list"></div>
+          <p class="hint">Tu peux désactiver un accès ou définir un nouveau mot de passe, sans connaître l'ancien.</p>
+        </section>
+        <section class="panel admin-panel">
+          <div class="section-heading"><h2>4. Documents publiés</h2><button type="button" class="text-button" id="admin-refresh">Actualiser</button></div>
+          <label>Afficher les documents de
+            <select id="admin-filter-student"><option value="all">Tous les élèves</option></select>
+          </label>
+          <div class="admin-resources" id="admin-resources"></div>
+        </section>
+      </div>
+    </div>
+  </section>
+  <div id="global-message" class="toast" role="status" aria-live="polite" hidden></div>
+</main>
+<footer class="site-footer"><div class="wrap">© Maths pratiques de Samuel · <a href="../index.html">Retour au site principal</a></div></footer>
+<script src="./config.js"></script>
+<script type="module" src="./app.js"></script>
+</body>
+</html>

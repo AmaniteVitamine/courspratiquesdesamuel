@@ -1,0 +1,3 @@
+[functions.manage-students]
+# La fonction vérifie elle-même l'identité du demandeur et son rôle admin.
+verify_jwt = false

@@ -1126,3 +1126,41 @@ nav a:hover,
   width: min(100% - 24px, 1100px);
 }
 }
+
+.espace-nav-button {
+  color: #1f4e85;
+  border: 1px solid #c8dbef;
+  background: #edf5fc;
+  border-radius: 999px;
+  padding: 8px 13px;
+  white-space: nowrap;
+}
+
+.espace-nav-button:hover {
+  background: #dceafa;
+}
+
+.hero-espace-action {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 15px;
+  margin-top: 22px;
+}
+
+.hero-espace-action span {
+  color: #64748b;
+  font-size: 0.84rem;
+  max-width: 260px;
+}
+
+@media (max-width: 640px) {
+  .hero-espace-action {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .hero-espace-action .btn {
+    text-align: center;
+  }
+}
