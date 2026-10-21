@@ -8,6 +8,8 @@ const MAX_SIZE = 15 * 1024 * 1024;
 let api, myProfile=null, students=[], resources=[], studentResources=[], attachments=[], messages=[];
 let editingResource=null, openedChat=null, toastTimeout=null, announcedUnread=false, pollingMessages=false;
 let latexFileContext=null, quickUploadResource=null, quickUploadBusy=false;
+let latexOriginal='',latexBusy=false,latexVersions=[];
+const nowMs=()=>performance.now();
 
 function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function formatDate(v){
@@ -54,13 +56,14 @@ function validConfig(){
 }
 async function signIn(e){
   e.preventDefault();clear('login-error');$('login-submit').disabled=true;
+  const button=$('login-submit');button.textContent='Connexion…';
   const id=$('login-identifier').value.trim().toLowerCase();
   const email=id.includes('@')?id:`${id}@${DOMAIN}`;
   try{
     const {data,error}=await api.auth.signInWithPassword({email,password:$('login-password').value});
     if(error)throw new Error('Identifiant ou mot de passe incorrect.');
     $('login-password').value='';await loadMySpace(data.session);
-  }catch(err){feedback('login-error',err.message,true)}finally{$('login-submit').disabled=false;}
+  }catch(err){feedback('login-error',err.message,true)}finally{$('login-submit').disabled=false;button.textContent='Se connecter';}
 }
 async function loadMySpace(knownSession=null){
   // Utilise la session déjà vérifiée au démarrage ou renvoyée après login.
@@ -528,40 +531,95 @@ async function addFilesDirectly(){
   }finally{quickUploadBusy=false;}
 }
 
+function latexIsDirty(){
+  return !!latexFileContext && !latexBusy && $('latex-content').value!==latexOriginal;
+}
+function closeLatexSafely(){
+  if(latexBusy){toast('Attends la fin du chargement ou de la sauvegarde.',true);return;}
+  if(latexIsDirty()&&!confirm('Des modifications LaTeX ne sont pas enregistrées. Les abandonner ?'))return;
+  $('latex-dialog').close();
+}
+async function loadLatexHistory(filePath){
+  // Cette table est protégée par la RLS admin. Les élèves n'ont aucun SELECT.
+  const {data,error}=await api.from('resource_file_source_history')
+    .select('id,latex_source,saved_at').eq('file_path',filePath)
+    .order('saved_at',{ascending:false}).limit(30);
+  if(!latexFileContext||latexFileContext.filePath!==filePath)return;
+  if(error){
+    $('latex-history-select').innerHTML='<option value="">Historique indisponible</option>';
+    $('latex-history-load').disabled=true;
+    return;
+  }
+  latexVersions=data||[];
+  const fmt=new Intl.DateTimeFormat('fr-FR',{dateStyle:'short',timeStyle:'medium'});
+  $('latex-history-select').innerHTML=latexVersions.length?
+    '<option value="">Choisir une sauvegarde…</option>'+latexVersions.map((v,i)=>
+      `<option value="${i}">${esc(fmt.format(new Date(v.saved_at)))} — ${v.latex_source.length.toLocaleString('fr-FR')} caractères</option>`).join(''):
+    '<option value="">Aucune version enregistrée</option>';
+  $('latex-history-load').disabled=true;
+}
 async function openLatexEditor(resourceId,token){
   if(myProfile?.role!=='admin')return;
   const r=resources.find(x=>x.id===resourceId);
   const f=r&&filesFor(r).find(f=>(f.id||'principal')===token);
   if(!f)return;
+  if($('latex-dialog').open){toast('Ferme d’abord l’éditeur LaTeX actuel.',true);return;}
   latexFileContext={resourceId,filePath:f.file_path};
+  latexOriginal='';latexBusy=true;latexVersions=[];
   $('latex-file-name').textContent=f.file_name;
-  $('latex-content').value='';clear('latex-feedback');
+  $('latex-content').value='';$('latex-content').disabled=true;
+  $('latex-save').disabled=true;$('latex-download').disabled=true;
+  $('latex-history-select').innerHTML='<option value="">Chargement…</option>';
+  $('latex-history-load').disabled=true;
+  clear('latex-feedback');
   $('latex-status').textContent='Chargement du code privé…';
   $('latex-dialog').showModal();
-  const {data,error}=await api.from('resource_file_sources').select('latex_source').eq('file_path',f.file_path).maybeSingle();
-  if(latexFileContext?.filePath!==f.file_path)return;
-  if(error){$('latex-status').textContent='Erreur de lecture : '+error.message;return;}
-  $('latex-content').value=data?.latex_source||'';
-  $('latex-status').textContent=data?'Source privée enregistrée.':'Aucun code LaTeX enregistré pour ce fichier.';
+  try{
+    const {data,error}=await api.from('resource_file_sources')
+      .select('latex_source').eq('file_path',f.file_path).maybeSingle();
+    if(latexFileContext?.filePath!==f.file_path)return;
+    if(error)throw error;
+    latexOriginal=data?.latex_source||'';
+    $('latex-content').value=latexOriginal;
+    $('latex-status').textContent=data?'Code enregistré et chargé.':'Aucun code LaTeX enregistré pour ce PDF.';
+    $('latex-content').disabled=false;
+    $('latex-save').disabled=false;$('latex-download').disabled=false;
+    latexBusy=false;
+    // L'historique est chargé en parallèle et n'empêche pas l'édition.
+    void loadLatexHistory(f.file_path);
+  }catch(err){
+    latexBusy=false;
+    $('latex-status').textContent='Erreur de lecture : '+(err.message||err)+'. Réessaie en rouvrant le PDF.';
+    // Interdire d'enregistrer sans avoir pu lire la version précédente.
+  }
 }
 async function saveLatex(e){
   e.preventDefault();
-  if(myProfile?.role!=='admin'||!latexFileContext)return;
+  if(myProfile?.role!=='admin'||!latexFileContext||latexBusy)return;
   const {resourceId,filePath}=latexFileContext;
   const source=$('latex-content').value;
-  const button=$('latex-save');button.disabled=true;clear('latex-feedback');
+  clear('latex-feedback');
+  if(!source.trim()){
+    feedback('latex-feedback','Code vide : rien n’a été effacé. Colle ton code LaTeX pour l’enregistrer.',true);
+    return;
+  }
+  latexBusy=true;
+  const button=$('latex-save');button.disabled=true;
   try{
-    if(source.length>500000)throw new Error('Le code dépasse la limite de 500 000 caractères.');
-    let error;
-    if(source.trim()){
-      ({error}=await api.from('resource_file_sources').upsert({file_path:filePath,resource_id:resourceId,latex_source:source},{onConflict:'file_path'}));
-    }else{
-      ({error}=await api.from('resource_file_sources').delete().eq('file_path',filePath));
-    }
+    if(source.length>500000)throw new Error('Limite : 500 000 caractères.');
+    const {error}=await api.from('resource_file_sources')
+      .upsert({file_path:filePath,resource_id:resourceId,latex_source:source},{onConflict:'file_path'});
     if(error)throw error;
-    $('latex-status').textContent=source.trim()?'Source LaTeX enregistrée.':'Source supprimée.';
-    feedback('latex-feedback','Enregistré uniquement dans l’administration.');
-  }catch(err){feedback('latex-feedback','Erreur : '+(err.message||err),true);}finally{button.disabled=false;}
+    // Vérification de lecture effective : le succès n'est annoncé que si le contenu relu est identique.
+    const {data, error:readError}=await api.from('resource_file_sources')
+      .select('latex_source').eq('file_path',filePath).single();
+    if(readError||data?.latex_source!==source)throw new Error('Impossible de confirmer la sauvegarde. Ne ferme pas cette fenêtre.');
+    latexOriginal=source;
+    $('latex-status').textContent='Code LaTeX enregistré et vérifié.';
+    feedback('latex-feedback','Sauvegarde vérifiée dans Supabase.');
+    void loadLatexHistory(filePath);
+  }catch(err){feedback('latex-feedback','Erreur : '+(err.message||err)+'. Le texte reste dans l’éditeur.',true);}
+  finally{latexBusy=false;button.disabled=false;}
 }
 function downloadLatex(){
   if(myProfile?.role!=='admin'||!latexFileContext)return;
@@ -615,21 +673,46 @@ async function refreshChat(){
 async function sendMessage(e){
   e.preventDefault();clear('chat-error');if(!openedChat)return;
   const body=$('chat-input').value.trim();if(!body)return;
-  $('chat-send').disabled=true;
+  const thread=openedChat;
+  $('chat-send').disabled=true;$('chat-send').textContent='Envoi…';
   try{
-    const {data,error}=await api.functions.invoke('send-message',{body:{resource_id:openedChat,message:body}});
-    if(error){let msg=error.message||'Message non envoyé.';try{const obj=await error.context?.json();if(obj?.error)msg=obj.error;}catch(_){}throw new Error(msg);}
-    if(data?.error)throw new Error(data.error);
-    $('chat-input').value='';await refreshChat();
+    // Un seul aller-retour en base ; la fonction SQL contrôle les droits et l'anti-spam.
+    const {data,error}=await api.rpc('send_resource_message_fast',{
+      p_resource_id:thread,p_body:body
+    });
+    if(error){
+      // Compatibilité pendant une migration non encore exécutée :
+      // repli uniquement si la fonction SQL n'existe pas (pas en cas de refus d'accès).
+      const missing=error.code==='PGRST202'||/Could not find the function|function.*does not exist/i.test(error.message||'');
+      if(!missing)throw error;
+      const legacy=await api.functions.invoke('send-message',{body:{resource_id:thread,message:body}});
+      if(legacy.error)throw legacy.error;
+      if(legacy.data?.error)throw new Error(legacy.data.error);
+      if(!legacy.data?.ok)throw new Error('Enregistrement non confirmé.');
+    }else if(!data?.length)throw new Error('Enregistrement non confirmé.');
+    $('chat-input').value='';
     toast('Message envoyé.');
-    if(myProfile.role==='admin')await refreshAdminMessages();
-  }catch(err){feedback('chat-error',err.message||'Impossible d’envoyer le message.',true)}
-  finally{$('chat-send').disabled=false;}
+    // Le bouton n'attend plus le rafraîchissement de tout l'historique.
+    $('chat-send').disabled=false;$('chat-send').textContent='Envoyer';
+    void refreshChat().catch(()=>{});
+    if(myProfile?.role==='admin')void refreshAdminMessages().catch(()=>{});
+  }catch(err){
+    feedback('chat-error',err.message||'Impossible d’envoyer le message.',true);
+  }finally{$('chat-send').disabled=false;$('chat-send').textContent='Envoyer';}
 }
 async function boot(){
   page('checking');
   $('global-message').addEventListener('click',()=>{$('global-message').hidden=true;});
   $('login-form').addEventListener('submit',signIn);
+  document.querySelectorAll('[data-password-toggle]').forEach(button=>{
+    button.addEventListener('click',()=>{
+      const input=$(button.dataset.passwordToggle);
+      const visible=input.type==='password';input.type=visible?'text':'password';
+      button.setAttribute('aria-pressed',String(visible));
+      button.setAttribute('aria-label',visible?'Masquer le mot de passe':'Afficher le mot de passe');
+      button.title=visible?'Masquer le mot de passe':'Afficher le mot de passe';
+    });
+  });
   $('logout').addEventListener('click',async()=>{closeSettings();await signOut();});
   $('settings-trigger').addEventListener('click',toggleSettings);
   document.addEventListener('click',(e)=>{if(!e.target.closest('#settings-holder'))closeSettings();});
@@ -660,9 +743,18 @@ async function boot(){
   $('admin-refresh').addEventListener('click',loadAdmin);
   $('admin-quick-files').addEventListener('change',addFilesDirectly);
   $('latex-form').addEventListener('submit',saveLatex);
-  $('latex-close').addEventListener('click',()=>$('latex-dialog').close());
+  $('latex-close').addEventListener('click',closeLatexSafely);
   $('latex-download').addEventListener('click',downloadLatex);
-  $('latex-dialog').addEventListener('close',()=>{latexFileContext=null;});
+  $('latex-dialog').addEventListener('cancel',e=>{e.preventDefault();closeLatexSafely();});
+  $('latex-dialog').addEventListener('close',()=>{latexFileContext=null;latexVersions=[];latexOriginal='';});
+  $('latex-history-select').addEventListener('change',e=>{$('latex-history-load').disabled=e.target.value==='';});
+  $('latex-history-load').addEventListener('click',()=>{
+    const index=Number($('latex-history-select').value);
+    if($('latex-history-select').value===''||!latexVersions[index]||latexBusy)return;
+    if(latexIsDirty()&&!confirm('Remplacer le texte en cours par cette ancienne version ?'))return;
+    $('latex-content').value=latexVersions[index].latex_source;
+    $('latex-status').textContent='Ancienne version chargée dans l’éditeur. Clique sur Enregistrer pour la restaurer.';
+  });
   $('admin-filter-student').addEventListener('change',renderAdminResources);
   $('admin-students').addEventListener('click',(e)=>{const b=e.target.closest('[data-admin-action]');if(b)studentAction(b.dataset.adminAction,b.dataset.id);});
   $('admin-resources').addEventListener('click',(e)=>{
