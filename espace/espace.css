@@ -82,3 +82,10 @@
 .latex-dialog .stack{margin-top:12px}
 .latex-dialog .dialog-header p{overflow-wrap:anywhere}
 @media(max-width:620px){.admin-file-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.latex-dialog{padding:16px}.latex-editor{min-height:42vh}}
+
+
+/* Ouverture automatique : masque le formulaire tant que la session est examinée. */
+.startup-screen{min-height:calc(100dvh - 190px);display:flex;align-items:center;justify-content:center;gap:14px;padding:50px 15px;color:var(--muted);font-weight:600;font-size:.94rem}
+.startup-spinner{width:24px;height:24px;flex:0 0 24px;border:3px solid #d9e6f3;border-top-color:var(--blue);border-radius:50%;animation:samuel-session-spin .8s linear infinite}
+@keyframes samuel-session-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.startup-spinner{animation:none}}

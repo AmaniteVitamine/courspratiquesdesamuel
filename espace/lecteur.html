@@ -1,8 +1,31 @@
 <!doctype html>
-<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer"><title>Document | Maths pratiques de Samuel</title>
-<link rel="icon" href="../images/logotop.png"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./espace.css"><link rel="stylesheet" href="../header-commun.css"><link rel="stylesheet" href="./lecteur.css"></head>
-<body><header class="header site-header"><div class="container nav header-inner"><a class="logo brand" href="../index.html" title="Site principal"><img src="../images/logo.png" alt="" class="logo-img"><span>Maths pratiques de Samuel</span></a><nav class="header-nav"><a href="./">Retour à mon espace</a></nav></div></header>
-<main class="reader-main"><div class="reader-head"><div><p class="reader-caption">Document personnel</p><h1 id="reader-title">Chargement du document…</h1><p id="reader-status" role="status">Vérification de l'accès au fichier…</p></div><a id="reader-download" class="reader-download" hidden rel="noopener noreferrer" target="_blank">Télécharger / ouvrir</a></div><div id="reader-frame" class="reader-frame"><p>Chargement…</p></div></main>
-<script src="./config.js"></script><script type="module" src="./lecteur.js"></script></body></html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="referrer" content="no-referrer">
+  <title>Ouverture du document… | Maths pratiques de Samuel</title>
+  <link rel="icon" href="../images/logotop.png">
+  <link rel="stylesheet" href="./lecteur.css">
+</head>
+<body>
+  <main class="document-screen">
+    <div class="reader-loading" id="reader-loading" role="status" aria-live="polite">
+      <span class="reader-spinner" aria-hidden="true"></span>
+      <span>Ouverture du PDF…</span>
+    </div>
+    <iframe id="reader-viewer" title="Document" referrerpolicy="no-referrer" hidden></iframe>
+    <img id="reader-image" alt="Document" hidden>
+    <div id="reader-error" class="reader-error" role="alert" hidden>
+      <p id="reader-error-text">Document indisponible.</p>
+      <a href="./">Retour à l’espace élève</a>
+    </div>
+    <div id="reader-fallback" class="reader-fallback" hidden>
+      <a id="reader-direct-link" href="#" target="_blank" rel="noopener noreferrer">Le PDF ne s’affiche pas ? Ouvrir dans le navigateur</a>
+    </div>
+  </main>
+  <script src="./config.js"></script>
+  <script type="module" src="./lecteur.js"></script>
+</body>
+</html>

@@ -27,10 +27,15 @@ function toast(t,error=false){
 function feedback(id,t,error=false){const e=$(id);e.hidden=false;e.textContent=t;e.className=error?'error':'success';}
 function clear(id){$(id).hidden=true;$(id).textContent='';}
 function page(which){
-  $('login-section').hidden=which!=='login';$('student-section').hidden=which!=='student';$('admin-section').hidden=which!=='admin';
-  $('settings-holder').hidden=which==='login';
-  if(which==='login')closeSettings();
-  if(which!=='admin')$('admin-unread-button').hidden=true;
+  // Ne jamais afficher le login avant la fin du contrôle de session.
+  const checking = which === 'checking';
+  $('startup-section').hidden = !checking;
+  $('login-section').hidden = which !== 'login';
+  $('student-section').hidden = which !== 'student';
+  $('admin-section').hidden = which !== 'admin';
+  $('settings-holder').hidden = checking || which === 'login';
+  if(checking || which === 'login')closeSettings();
+  if(which !== 'admin')$('admin-unread-button').hidden = true;
 }
 function makePassword(){
   const alphabet='ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#%+-_';
@@ -52,15 +57,21 @@ async function signIn(e){
   const id=$('login-identifier').value.trim().toLowerCase();
   const email=id.includes('@')?id:`${id}@${DOMAIN}`;
   try{
-    const {error}=await api.auth.signInWithPassword({email,password:$('login-password').value});
+    const {data,error}=await api.auth.signInWithPassword({email,password:$('login-password').value});
     if(error)throw new Error('Identifiant ou mot de passe incorrect.');
-    $('login-password').value='';await loadMySpace();
+    $('login-password').value='';await loadMySpace(data.session);
   }catch(err){feedback('login-error',err.message,true)}finally{$('login-submit').disabled=false;}
 }
-async function loadMySpace(){
-  // Session locale : évite une requête Auth supplémentaire au chargement.
-  // Les données restent toujours vérifiées par les règles RLS de Supabase.
-  const {data:{session},error:ue}=await api.auth.getSession();
+async function loadMySpace(knownSession=null){
+  // Utilise la session déjà vérifiée au démarrage ou renvoyée après login.
+  // L'accès aux données reste contrôlé côté serveur par Supabase RLS.
+  let session=knownSession;
+  let ue=null;
+  if(!session){
+    const result=await api.auth.getSession();
+    session=result.data.session;
+    ue=result.error;
+  }
   const user=session?.user;
   if(ue||!user){page('login');return;}
   const {data:p,error}=await api.from('profiles').select('id,identifier,display_name,role,active').eq('id',user.id).maybeSingle();
@@ -616,7 +627,7 @@ async function sendMessage(e){
   finally{$('chat-send').disabled=false;}
 }
 async function boot(){
-  page('login');
+  page('checking');
   $('global-message').addEventListener('click',()=>{$('global-message').hidden=true;});
   $('login-form').addEventListener('submit',signIn);
   $('logout').addEventListener('click',async()=>{closeSettings();await signOut();});
@@ -669,11 +680,17 @@ async function boot(){
   });
   $('refresh-messages').addEventListener('click',refreshAdminMessages);
   setInterval(()=>{if(myProfile?.role==='admin'&&!document.hidden)refreshAdminMessages().catch(()=>{});},45000);
-  const config=validConfig();if(!config)return;
+  const config=validConfig();
+  if(!config){page('login');return;}
   try{
     api=createClient(config.supabaseUrl,config.publishableKey,{auth:{autoRefreshToken:true,persistSession:true,detectSessionInUrl:false}});
-    const {data:{session}}=await api.auth.getSession();
-    if(session)await loadMySpace();
-  }catch(_){feedback('login-error','Impossible de joindre le service.',true);}
+    const {data:{session},error:sessionError}=await api.auth.getSession();
+    if(sessionError)throw sessionError;
+    if(session)await loadMySpace(session);
+    else page('login');
+  }catch(_){
+    page('login');
+    feedback('login-error','Impossible de joindre le service.',true);
+  }
 }
 boot();
