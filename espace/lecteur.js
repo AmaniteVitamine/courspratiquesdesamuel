@@ -46,35 +46,9 @@ async function start(){
   const {data:signed,error:signError}=await api.storage.from(BUCKET).createSignedUrl(path,300);
   if(signError || !signed?.signedUrl)return showError('Le fichier ne peut pas être ouvert pour le moment.');
 
-  // L'adresse dans la barre reste celle de notre domaine. Le lecteur natif
-  // du navigateur occupe directement la fenêtre, sans page de présentation.
-  if(ext==='pdf'){
-    const frame=el('reader-viewer');
-    let loaded=false;
-    frame.addEventListener('load',()=>{
-      loaded=true;
-      el('reader-loading').hidden=true;
-    },{once:true});
-    frame.src=signed.signedUrl;
-    frame.hidden=false;
-    // Certains navigateurs mobiles n'affichent pas les PDF dans un iframe.
-    // Le lien de secours n'apparaît que si le PDF tarde à charger.
-    el('reader-direct-link').href=signed.signedUrl;
-    setTimeout(()=>{if(!loaded)el('reader-fallback').hidden=false;},12000);
-  }else if(['png','jpg','jpeg','webp'].includes(ext)){
-    const image=el('reader-image');
-    image.addEventListener('load',()=>{el('reader-loading').hidden=true;},{once:true});
-    image.addEventListener('error',()=>showError('Impossible d’afficher cette image.'),{once:true});
-    image.src=signed.signedUrl;
-    image.hidden=false;
-  }else{
-    // DOCX et autres fichiers : déclencher directement l'ouverture native.
-    // La page explique la marche à suivre uniquement en cas de blocage.
-    el('reader-loading').hidden=true;
-    const link=el('reader-direct-link');link.href=signed.signedUrl;
-    link.textContent='Ouvrir ou télécharger le document';
-    el('reader-fallback').hidden=false;
-    link.click();
-  }
+  // Compatibilité avec les anciens liens "lecteur.html" (favoris, etc.).
+  // On ouvre toujours le VRAI fichier dans le lecteur natif du navigateur.
+  // Aucune iframe : elle fonctionne mal sur plusieurs navigateurs mobiles.
+  window.location.replace(signed.signedUrl);
 }
 start().catch(()=>showError('Le document n’a pas pu être chargé. Actualise la page puis réessaie.'));

@@ -105,3 +105,168 @@
 
 /* Le navigateur Edge ne superpose pas son propre oeil à celui du site. */
 .password-control input::-ms-reveal,.password-control input::-ms-clear{display:none}
+
+/* V7 — toutes les fenêtres restent à l'intérieur de l'écran sur téléphone.
+   La page derrière est bloquée ; seules les zones de la fenêtre défilent. */
+html:has(dialog[open]),
+body:has(dialog[open]) {
+  overflow: hidden !important;
+  overscroll-behavior: none;
+}
+.dialog-panel[open] {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  width: min(580px, calc(100vw - 20px));
+  max-width: calc(100vw - 20px);
+  max-height: calc(100dvh - 20px);
+  padding: 0;
+  overflow: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.dialog-panel[open] .dialog-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  flex: 0 0 auto;
+  align-items: center;
+  min-width: 0;
+  margin: 0;
+  padding: 14px 18px;
+  background: #fff;
+  border-bottom: 1px solid var(--line);
+}
+.dialog-panel .dialog-header > div { min-width: 0; overflow-wrap: anywhere; }
+.dialog-panel .close-button {
+  display: grid;
+  place-items: center;
+  flex: 0 0 42px;
+  width: 42px;
+  height: 42px;
+  min-width: 42px;
+  font-size: 1.6rem;
+  z-index: 11;
+  touch-action: manipulation;
+}
+.dialog-panel .close-button:focus-visible {outline: 2px solid #2563eb; outline-offset: 2px;}
+
+/* Fenêtre de code LaTeX : le bandeau de fermeture est toujours visible.
+   L'éditeur et le formulaire peuvent défiler indépendamment. */
+.latex-dialog[open] {
+  width: min(850px, calc(100vw - 16px));
+  height: min(900px, calc(100dvh - 16px));
+  max-height: calc(100dvh - 16px);
+}
+.latex-dialog > p {
+  flex: 0 0 auto;
+  margin: 6px 0;
+  padding: 0 18px;
+}
+.latex-dialog #latex-form {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  gap: 12px;
+  margin: 0;
+  padding: 12px 18px 22px;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.latex-dialog #latex-form > label {
+  display: flex;
+  flex: 1 0 220px;
+  flex-direction: column;
+  min-height: 220px;
+  min-width: 0;
+}
+.latex-dialog .latex-editor {
+  flex: 1 1 auto;
+  display: block;
+  min-height: 175px;
+  height: 100%;
+  max-height: none;
+  width: 100%;
+  overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x pan-y;
+  resize: none;
+  white-space: pre;
+}
+.latex-dialog .actions-inline,
+.latex-dialog .latex-history-row { flex: 0 0 auto; }
+
+/* Discussions et mot de passe : le texte se déroule, pas la page dessous. */
+#chat-dialog[open] {height: min(700px, calc(100dvh - 20px));}
+#chat-dialog .chat-messages {
+  flex: 1 1 auto;
+  min-height: 70px;
+  max-height: none;
+  margin: 0;
+  padding: 12px 18px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+#chat-dialog #chat-form {
+  flex: 0 0 auto;
+  min-height: 0;
+  max-height: 45%;
+  margin: 0;
+  padding: 14px 18px 18px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  border-top: 1px solid var(--line);
+}
+#password-dialog[open] {height: auto;}
+#password-dialog #password-form {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: 0;
+  padding: 18px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 620px) {
+  .dialog-panel[open] {
+    width: calc(100vw - 12px);
+    max-width: calc(100vw - 12px);
+    max-height: calc(100dvh - 12px);
+    border-radius: 12px;
+  }
+  .dialog-panel[open] .dialog-header {padding: 10px 12px;}
+  .dialog-panel[open] .dialog-header h2 {font-size: 1.05rem;}
+  .dialog-panel[open] .close-button {
+    flex-basis: 44px;
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+  }
+  .latex-dialog[open] {
+    width: calc(100vw - 12px);
+    height: calc(100dvh - 12px);
+    max-height: calc(100dvh - 12px);
+  }
+  .latex-dialog > p {font-size: .73rem; padding: 0 12px; margin: 3px 0;}
+  .latex-dialog #latex-form {padding: 10px 12px 20px; gap: 10px;}
+  .latex-dialog #latex-form > label {flex: 0 0 auto; min-height: 0;}
+  .latex-dialog .latex-editor {
+    flex: 0 0 auto;
+    height: min(42dvh, 350px);
+    min-height: 160px;
+    font-size: 16px;
+    line-height: 1.4;
+  }
+  #chat-dialog[open] {height: calc(100dvh - 12px);}
+  #chat-dialog .chat-messages {padding: 12px;}
+  #chat-dialog #chat-form {padding: 12px;}
+  #password-dialog #password-form {padding: 14px;}
+}

@@ -146,14 +146,34 @@ function renderStudent(){
 function openFile(resourceId,index){
   const r=[...studentResources,...resources].find(x=>x.id===resourceId);
   const file=r&&filesFor(r)[index];
-  if(!file)return;
-  const target=new URL('./lecteur.html',window.location.href);
-  target.searchParams.set('document',resourceId);
-  target.searchParams.set('piece',file.id||'principal');
-  // Pas de lien signé Supabase dans la barre d'adresse : la vérification
-  // des droits et l'obtention du lien sont faites dans le lecteur privé.
-  window.open(target.href,'_blank','noopener,noreferrer');
+  if(!file?.file_path)return;
+
+  // IMPORTANT : ouvrir l'onglet pendant le CLIC (avant tout await).
+  // Sur iPhone/Android, un window.open après un appel réseau serait bloqué.
+  const tab=window.open('','_blank');
+  if(tab){
+    try{
+      tab.document.title='Ouverture du document…';
+      tab.document.body.textContent='Ouverture du document…';
+      tab.opener=null;
+    }catch(_){}
+  }
+
+  // Le bucket reste privé. Le lien signé n'est créé que pour la personne
+  // connectée et devient l'URL réelle du PDF dans le navigateur.
+  void (async()=>{
+    try{
+      const {data,error}=await api.storage.from(BUCKET).createSignedUrl(file.file_path,300);
+      if(error||!data?.signedUrl)throw error||new Error('Lien indisponible.');
+      if(tab&&!tab.closed)tab.location.replace(data.signedUrl);
+      else window.location.assign(data.signedUrl);
+    }catch(err){
+      if(tab&&!tab.closed)tab.close();
+      toast('Impossible d’ouvrir le fichier : '+(err?.message||'réessaie.'),true);
+    }
+  })();
 }
+
 function studentOpts(){
   const selected=$('resource-student').value;
   $('resource-student').innerHTML='<option value="">Sélectionner un élève</option>'+students.filter(s=>s.active).map(s=>`<option value="${esc(s.id)}">${esc(s.display_name)} (${esc(s.identifier)})</option>`).join('');
