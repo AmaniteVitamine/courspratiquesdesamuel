@@ -6,7 +6,7 @@ const DOMAIN = 'eleves.mathspratiquesdesamuel.com';
 const CATEGORIES = {cours:'Cours',exercices:'Exercices',correction:'Correction',controle:'Contrôle',autre:'Autre'};
 const MAX_SIZE = 15 * 1024 * 1024;
 let api, myProfile=null, students=[], resources=[], studentResources=[], attachments=[], messages=[];
-let editingResource=null, openedChat=null;
+let editingResource=null, openedChat=null, toastTimeout=null, announcedUnread=false, pollingMessages=false;
 
 function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function formatDate(v){
@@ -14,12 +14,22 @@ function formatDate(v){
   return new Intl.DateTimeFormat('fr-FR',{timeZone:'Europe/Paris',day:'2-digit',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'}).format(new Date(v));
 }
 function courseDate(v){if(!v)return ''; const b=String(v).split('-');return b.length===3?`${b[2]}/${b[1]}/${b[0]}`:v;}
-function toast(t,error=false){const el=$('global-message');el.textContent=t;el.style.background=error?'#992d2d':'#203142';el.hidden=false;}
+function toast(t,error=false){
+  const el=$('global-message');
+  if(toastTimeout)clearTimeout(toastTimeout);
+  el.textContent=t;
+  el.classList.toggle('toast-error',Boolean(error));
+  el.classList.toggle('toast-success',!error);
+  el.hidden=false;
+  toastTimeout=setTimeout(()=>{el.hidden=true;toastTimeout=null;},5500);
+}
 function feedback(id,t,error=false){const e=$(id);e.hidden=false;e.textContent=t;e.className=error?'error':'success';}
 function clear(id){$(id).hidden=true;$(id).textContent='';}
 function page(which){
   $('login-section').hidden=which!=='login';$('student-section').hidden=which!=='student';$('admin-section').hidden=which!=='admin';
-  $('logout').hidden=which==='login';$('change-password-button').hidden=which==='login';
+  $('settings-holder').hidden=which==='login';
+  if(which==='login')closeSettings();
+  if(which!=='admin')$('admin-unread-button').hidden=true;
 }
 function makePassword(){
   const alphabet='ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#%+-_';
@@ -57,7 +67,7 @@ async function loadMySpace(){
 }
 async function signOut(){
   await api.auth.signOut();myProfile=null;students=[];resources=[];studentResources=[];messages=[];attachments=[];
-  $('login-form').reset();page('login');toast('Déconnexion effectuée.');
+  $('login-form').reset();announcedUnread=false;page('login');toast('Déconnexion effectuée.');
 }
 async function changePassword(e){
   e.preventDefault();clear('password-error');$('password-submit').disabled=true;
@@ -108,10 +118,10 @@ function renderStudent(){
       ${r.description?`<p class="description">${esc(r.description)}</p>`:''}
       ${att.length?`<div class="resource-files">${att.map((f,i)=>`<button class="resource-file-button" type="button" data-open-file="${esc(r.id)}" data-file-index="${i}"><span>📄 ${esc(f.file_name)}</span><span>↗</span></button>`).join('')}</div>`:''}
       <div class="resource-actions">
-       ${r.content?`<button type="button" class="btn ghost" data-toggle-text="${esc(r.id)}">Lire les consignes</button>`:''}
+       ${String(r.content||'').trim()?`<button type="button" class="btn ghost" data-toggle-text="${esc(r.id)}">Lire les consignes</button>`:''}
        <button class="btn ghost" type="button" data-chat="${esc(r.id)}">Poser une question</button>
       </div>
-      ${r.content?`<div class="resource-content" data-content="${esc(r.id)}" hidden>${esc(r.content)}</div>`:''}
+      ${String(r.content||'').trim()?`<div class="resource-content" data-content="${esc(r.id)}" hidden>${esc(r.content)}</div>`:''}
     </article>`;
   }).join('');
 }
@@ -140,12 +150,12 @@ async function loadAdmin(){
     api.from('profiles').select('id,identifier,display_name,active,created_at').eq('role','student').order('display_name'),
     api.from('resources').select('*').order('added_at',{ascending:false}),
     api.from('resource_files').select('*'),
-    api.from('resource_messages').select('id,resource_id,student_id,sender_role,body,created_at').order('created_at',{ascending:false}).limit(1200)
+    api.from('resource_messages').select('id,resource_id,student_id,sender_role,body,created_at,admin_read_at').order('created_at',{ascending:false}).limit(1200)
   ]);
   if(pr.error||rr.error||fr.error||mr.error){toast('Chargement admin impossible : exécute la migration SQL V2.',true);return;}
   students=pr.data||[];resources=rr.data||[];attachments=fr.data||[];messages=mr.data||[];
   $('admin-count').textContent=`${students.length} élève${students.length>1?'s':''} · ${resources.length} envoi${resources.length>1?'s':''}`;
-  studentOpts();renderAdminStudents();renderAdminResources();renderThreads();
+  studentOpts();renderAdminStudents();renderAdminResources();renderThreads();updateUnreadUI();
 }
 function renderAdminStudents(){
   $('admin-students').innerHTML=students.length?students.map(s=>`
@@ -173,13 +183,99 @@ function renderAdminResources(){
       </div></div>`;
   }).join('')||'<p class="muted small">Aucun document pour cette sélection.</p>';
 }
+function unreadStudentMessages(){
+  return messages.filter(m=>m.sender_role==='student'&&!m.admin_read_at);
+}
+function updateUnreadUI(){
+  if(myProfile?.role!=='admin')return;
+  const n=unreadStudentMessages().length;
+  const nav=$('admin-unread-button');
+  nav.hidden=n===0;
+  $('admin-unread-count').textContent=String(n);
+  const banner=$('admin-new-messages');banner.hidden=n===0;
+  $('admin-new-count').textContent=n===1?'1 message non lu':`${n} messages non lus`;
+  $('admin-message-badge').hidden=n===0;
+  $('admin-message-badge').textContent=String(n);
+  if(n>0&&!announcedUnread){
+    announcedUnread=true;
+    toast(n===1?'Tu as 1 nouveau message à lire.':`Tu as ${n} messages non lus.`);
+  }
+}
+function jumpToAdminMessages(){
+  if(myProfile?.role!=='admin')return;
+  closeSettings();
+  $('admin-messages-panel').scrollIntoView({behavior:'smooth',block:'start'});
+}
+async function refreshAdminMessages(){
+  if(myProfile?.role!=='admin'||pollingMessages)return;
+  pollingMessages=true;
+  try{
+    const {data,error}=await api.from('resource_messages')
+      .select('id,resource_id,student_id,sender_role,body,created_at,admin_read_at')
+      .order('created_at',{ascending:false}).limit(1200);
+    if(!error){messages=data||[];renderThreads();updateUnreadUI();}
+  } finally {pollingMessages=false;}
+}
+async function messageAction(action,params){
+  const {data,error}=await api.functions.invoke('manage-messages',{body:{action,...params}});
+  if(error){
+    let detail=error.message||'Opération impossible.';
+    try{const body=await error.context?.json();if(body?.error)detail=body.error;}catch(_){}
+    throw new Error(detail);
+  }
+  if(data?.error)throw new Error(data.error);
+  return data;
+}
+async function manageSingleMessage(action,id){
+  if(myProfile?.role!=='admin')return;
+  if(action==='delete'&&!confirm('Supprimer définitivement ce message ?'))return;
+  try{
+    await messageAction(action,{message_id:id});
+    await refreshChat();
+    await refreshAdminMessages();
+    if(action==='delete')toast('Message supprimé.');
+    else toast(action==='mark_unread'?'Message marqué comme non lu.':'Message marqué comme lu.');
+  }catch(err){toast(err.message,true);}
+}
+async function manageThread(action,resourceId){
+  if(myProfile?.role!=='admin')return;
+  const resource=resources.find(r=>r.id===resourceId);
+  if(!resource)return;
+  if(action==='delete_thread'&&!confirm(`Supprimer définitivement TOUS les messages de « ${resource.title} » ?\nLe document restera disponible.`))return;
+  const studentMessage=messages.find(m=>m.resource_id===resourceId&&m.sender_role==='student');
+  if(action==='mark_unread'&&!studentMessage){toast('Aucun message élève à marquer.',true);return;}
+  try{
+    await messageAction(action,action==='mark_unread'?{message_id:studentMessage.id}:{resource_id:resourceId});
+    if(action==='delete_thread'&&openedChat===resourceId)$('chat-dialog').close();
+    await refreshAdminMessages();
+    toast(action==='delete_thread'?'Discussion supprimée.':'Discussion marquée comme non lue.');
+  }catch(err){toast(err.message,true);}
+}
+function closeSettings(){
+  $('settings-menu').hidden=true;
+  $('settings-trigger').setAttribute('aria-expanded','false');
+}
+function toggleSettings(){
+  const open=$('settings-menu').hidden;
+  $('settings-menu').hidden=!open;
+  $('settings-trigger').setAttribute('aria-expanded',String(open));
+}
 function renderThreads(){
   const seen=new Set(),threads=[];
   for(const m of messages){
     if(seen.has(m.resource_id))continue;seen.add(m.resource_id);
     const r=resources.find(x=>x.id===m.resource_id);if(!r)continue;
-    const s=students.find(x=>x.id===r.student_id);
-    threads.push(`<div class="admin-row"><div class="thread-summary"><strong>${esc(r.title)}</strong><small>${esc(s?.display_name||'Élève')} · ${esc(formatDate(m.created_at))}</small><small>${esc(m.sender_role==='student'?'Élève : ':'Administration : ')}${esc(m.body.slice(0,130))}${m.body.length>130?'…':''}</small></div><div class="admin-row-actions"><button type="button" class="tiny" data-thread-chat="${esc(r.id)}">Ouvrir</button></div></div>`);
+    const student=students.find(x=>x.id===r.student_id);
+    const count=messages.filter(x=>x.resource_id===r.id&&x.sender_role==='student'&&!x.admin_read_at).length;
+    threads.push(`<div class="admin-row ${count?'thread-unread':''}">
+      <div class="thread-summary"><div class="thread-title"><strong>${esc(r.title)}</strong>${count?`<span class="unread-pill">${count} non lu${count>1?'s':''}</span>`:''}</div>
+      <small>${esc(student?.display_name||'Élève')} · ${esc(formatDate(m.created_at))}</small>
+      <small>${esc(m.sender_role==='student'?'Élève : ':'Réponse : ')}${esc(m.body.slice(0,130))}${m.body.length>130?'…':''}</small></div>
+      <div class="admin-row-actions">
+        <button type="button" class="tiny" data-thread-chat="${esc(r.id)}">Ouvrir</button>
+        <button type="button" class="tiny" data-thread-action="mark_unread" data-thread-id="${esc(r.id)}">Marquer non lu</button>
+        <button type="button" class="tiny danger" data-thread-action="delete_thread" data-thread-id="${esc(r.id)}">Supprimer la discussion</button>
+      </div></div>`);
   }
   $('admin-threads').innerHTML=threads.join('')||'<p class="muted small">Aucun message pour le moment.</p>';
 }
@@ -327,18 +423,29 @@ async function openChat(resourceId){
   const r=[...resources,...studentResources].find(x=>x.id===resourceId);if(!r)return;
   openedChat=resourceId;$('chat-title').textContent='Discussion';$('chat-subtitle').textContent=r.title;
   $('chat-input').value='';clear('chat-error');$('chat-messages').innerHTML='<p class="chat-empty">Chargement…</p>';
-  $('chat-dialog').showModal();await refreshChat();
+  $('chat-dialog').showModal();
+  if(myProfile?.role==='admin'){
+    try{
+      await messageAction('mark_thread_read',{resource_id:resourceId});
+      await refreshAdminMessages();
+    }catch(err){toast('Lecture non enregistrée : '+err.message,true);}
+  }
+  await refreshChat();
 }
 async function refreshChat(){
   if(!openedChat)return;
   const {data,error}=await api.from('resource_messages')
-    .select('id,body,sender_role,sender_id,created_at').eq('resource_id',openedChat).order('created_at',{ascending:true}).limit(500);
+    .select('id,body,sender_role,sender_id,created_at,admin_read_at').eq('resource_id',openedChat).order('created_at',{ascending:true}).limit(500);
   if(error){feedback('chat-error','Impossible de charger cette discussion.',true);return;}
   const entries=data||[];
   $('chat-messages').innerHTML=entries.length?entries.map(m=>`
     <div class="chat-message ${m.sender_id===myProfile?.id?'own':''}">
-      <small>${m.sender_role==='student'?'Élève':'Réponse'} · ${esc(formatDate(m.created_at))}</small>
+      <small>${m.sender_role==='student'?'Élève':'Réponse'} · ${esc(formatDate(m.created_at))}${myProfile?.role==='admin'&&m.sender_role==='student'&&!m.admin_read_at?' · <strong>Non lu</strong>':''}</small>
       <p>${esc(m.body)}</p>
+      ${myProfile?.role==='admin'?`<div class="chat-message-tools">
+        ${m.sender_role==='student'?`<button class="tiny" type="button" data-message-action="${m.admin_read_at?'mark_unread':'mark_read'}" data-message-id="${esc(m.id)}">${m.admin_read_at?'Marquer non lu':'Marquer lu'}</button>`:''}
+        <button class="tiny danger" type="button" data-message-action="delete" data-message-id="${esc(m.id)}">Supprimer</button>
+      </div>`:''}
     </div>`).join(''):'<p class="chat-empty">Aucun message. Écris ta question ici.</p>';
   $('chat-messages').scrollTop=$('chat-messages').scrollHeight;
 }
@@ -351,10 +458,8 @@ async function sendMessage(e){
     if(error){let msg=error.message||'Message non envoyé.';try{const obj=await error.context?.json();if(obj?.error)msg=obj.error;}catch(_){}throw new Error(msg);}
     if(data?.error)throw new Error(data.error);
     $('chat-input').value='';await refreshChat();
-    if(myProfile.role==='student'&&data.notification!=='sent'){
-      toast('Message enregistré. La notification par e-mail n’a pas été confirmée : vérifie avec le responsable si nécessaire.',true);
-    }else toast('Message envoyé.');
-    if(myProfile.role==='admin')await loadAdmin();
+    toast('Message envoyé.');
+    if(myProfile.role==='admin')await refreshAdminMessages();
   }catch(err){feedback('chat-error',err.message||'Impossible d’envoyer le message.',true)}
   finally{$('chat-send').disabled=false;}
 }
@@ -362,13 +467,19 @@ async function boot(){
   page('login');
   $('global-message').addEventListener('click',()=>{$('global-message').hidden=true;});
   $('login-form').addEventListener('submit',signIn);
-  $('logout').addEventListener('click',signOut);
-  $('change-password-button').addEventListener('click',()=>{$('password-form').reset();clear('password-error');$('password-dialog').showModal();});
+  $('logout').addEventListener('click',async()=>{closeSettings();await signOut();});
+  $('settings-trigger').addEventListener('click',toggleSettings);
+  document.addEventListener('click',(e)=>{if(!e.target.closest('#settings-holder'))closeSettings();});
+  document.addEventListener('keydown',(e)=>{if(e.key==='Escape')closeSettings();});
+  $('admin-unread-button').addEventListener('click',jumpToAdminMessages);
+  $('admin-go-messages').addEventListener('click',jumpToAdminMessages);
+  $('change-password-button').addEventListener('click',()=>{closeSettings();$('password-form').reset();clear('password-error');$('password-dialog').showModal();});
   $('password-close').addEventListener('click',()=>$('password-dialog').close());
   $('password-form').addEventListener('submit',changePassword);
   $('chat-close').addEventListener('click',()=>$('chat-dialog').close());
   $('chat-dialog').addEventListener('close',()=>{openedChat=null;});
   $('chat-form').addEventListener('submit',sendMessage);
+  $('chat-messages').addEventListener('click',(e)=>{const b=e.target.closest('[data-message-action]');if(b)manageSingleMessage(b.dataset.messageAction,b.dataset.messageId);});
   $('chat-refresh').addEventListener('click',refreshChat);
   ['student-search','student-type','student-sort'].forEach(id=>$(id).addEventListener(id==='student-search'?'input':'change',renderStudent));
   $('student-list').addEventListener('click',(e)=>{
@@ -391,8 +502,13 @@ async function boot(){
     if(b.dataset.adminResource==='edit')editResource(b.dataset.id);
     if(b.dataset.adminResource==='delete')deleteResource(b.dataset.id);
   });
-  $('admin-threads').addEventListener('click',(e)=>{const b=e.target.closest('[data-thread-chat]');if(b)openChat(b.dataset.threadChat);});
-  $('refresh-messages').addEventListener('click',loadAdmin);
+  $('admin-threads').addEventListener('click',(e)=>{
+    const action=e.target.closest('[data-thread-action]');
+    if(action){manageThread(action.dataset.threadAction,action.dataset.threadId);return;}
+    const b=e.target.closest('[data-thread-chat]');if(b)openChat(b.dataset.threadChat);
+  });
+  $('refresh-messages').addEventListener('click',refreshAdminMessages);
+  setInterval(()=>{if(myProfile?.role==='admin'&&!document.hidden)refreshAdminMessages().catch(()=>{});},45000);
   const config=validConfig();if(!config)return;
   try{
     api=createClient(config.supabaseUrl,config.publishableKey,{auth:{autoRefreshToken:true,persistSession:true,detectSessionInUrl:false}});

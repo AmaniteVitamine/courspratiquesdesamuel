@@ -39,3 +39,31 @@
 .thread-summary{display:grid;gap:4px}
 @media(max-width:740px){.site-header .brand.logo{gap:8px;font-size:.95rem}.site-header .brand.logo img{width:46px;height:46px}.site-header .header-nav{gap:5px}.site-header .header-nav a,.site-header .header-nav .nav-link{font-size:.78rem;padding:5px}.site-header .header-inner.nav{padding:12px 0}.login-layout{padding:40px 0 65px}.login-panel{padding:26px 22px}}
 @media(max-width:420px){.site-header .brand.logo{max-width:150px;font-size:.79rem}.site-header .brand.logo img{width:40px;height:40px}.site-header .header-nav{flex-wrap:wrap;max-width:165px}.site-header .header-nav a,.site-header .header-nav .nav-link{font-size:.73rem}}
+
+/* V3 — Paramètres accessibles par la roue dentée, notification et messages. */
+.site-header .header-nav{display:flex;align-items:center;gap:12px;overflow:visible}
+.site-header .settings-holder{position:relative;flex-shrink:0}
+.site-header .settings-trigger{width:42px;height:42px;display:grid;place-items:center;border:1px solid #d9e3f0;background:#f8fbff;border-radius:12px;color:#1f4e85;padding:0;transition:background .15s,border-color .15s}
+.site-header .settings-trigger:hover,.site-header .settings-trigger[aria-expanded="true"]{background:#eaf2ff;border-color:#9dbddf}
+.site-header .settings-trigger:focus-visible,.settings-menu-item:focus-visible,.admin-unread-button:focus-visible{outline:3px solid #8bbcf8;outline-offset:2px}
+.site-header .settings-menu{position:absolute;right:0;top:calc(100% + 10px);width:min(286px,calc(100vw - 24px));max-height:min(65vh,360px);overflow-y:auto;overscroll-behavior:contain;background:white;border:1px solid #d9e3ee;border-radius:13px;box-shadow:0 15px 45px rgba(24,49,82,.16);z-index:1000;padding:7px;text-align:left}
+.site-header .settings-menu-heading{font-weight:800;color:#64748b;padding:10px 12px 8px;font-size:.77rem;letter-spacing:.025em}
+.site-header .settings-menu-item{display:block;width:100%;padding:11px 12px;text-align:left;border:0;background:transparent;border-radius:8px;color:#203142;font-size:.91rem;font-weight:650;line-height:1.35;cursor:pointer}
+.site-header .settings-menu-item:hover{background:#f0f6fc;color:#1f4e85}
+.site-header .settings-menu .settings-divider{height:1px;background:#e5ecf3;margin:6px 3px}
+.site-header .settings-menu .settings-logout{color:#a42d35}
+.site-header .settings-menu .settings-logout:hover{background:#fff0f0;color:#8b202b}
+.site-header .admin-unread-button{display:flex;align-items:center;gap:7px;border:1px solid #f3d9ae;background:#fff9ed;color:#985a07;padding:8px 11px;border-radius:12px;font-weight:800}
+.admin-unread-count,.admin-message-badge,.unread-pill{display:inline-flex;align-items:center;justify-content:center;min-width:21px;min-height:21px;border-radius:20px;padding:2px 7px;color:#fff;background:#c06a18;font-size:.72rem;font-weight:800}
+.admin-unread-banner{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;border:1px solid #f0d8a8;border-radius:12px;padding:13px 16px;margin:-2px 0 22px;background:#fff9e9;color:#764915}
+.admin-unread-banner span{font-size:.9rem}
+.thread-title{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.thread-unread{background:#fff9ec;border-color:#edc879}
+.chat-message-tools{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
+.chat-message-tools .tiny{font-size:.73rem}
+.toast.toast-success{background:#117943;color:white;border:1px solid #13904e}
+.toast.toast-error{background:#932c32;color:white;border:1px solid #a63a42}
+#admin-messages-panel{scroll-margin-top:140px}
+@media(max-width:620px){.site-header .header-nav{flex-wrap:nowrap;gap:7px}.site-header .settings-trigger{width:40px;height:40px}.site-header .settings-menu{max-height:min(60vh,340px)}.admin-unread-banner{align-items:flex-start}.admin-unread-banner span{display:block}}
+
+.site-header .settings-gear{font-family:Arial,sans-serif;font-size:25px;line-height:1;font-weight:400}
