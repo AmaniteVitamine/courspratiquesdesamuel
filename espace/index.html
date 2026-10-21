@@ -176,6 +176,19 @@
       </div>
     </div>
   </section>
+  <input type="file" id="admin-quick-files" accept=".pdf,.png,.jpg,.jpeg,.webp,.docx" multiple hidden aria-label="Ajouter des fichiers à cet envoi">
+  <dialog id="latex-dialog" class="dialog-panel latex-dialog" aria-labelledby="latex-title">
+    <div class="dialog-header"><div><h2 id="latex-title">Code LaTeX privé</h2><p class="muted small" id="latex-file-name"></p></div><button class="close-button" type="button" id="latex-close" aria-label="Fermer">×</button></div>
+    <p class="muted small">Ce code est enregistré uniquement pour le compte administrateur. Il n'est jamais transmis aux élèves.</p>
+    <p class="hint" id="latex-status">Chargement…</p>
+    <form id="latex-form" class="stack">
+      <label>Source LaTeX de ce PDF
+        <textarea id="latex-content" class="latex-editor" rows="16" maxlength="500000" spellcheck="false" placeholder="Colle ici le code de ton fichier .tex…"></textarea>
+      </label>
+      <div class="actions-inline"><button class="btn primary" type="submit" id="latex-save">Enregistrer le code</button><button class="btn ghost" type="button" id="latex-download">Télécharger .tex</button></div>
+      <p class="success" id="latex-feedback" role="status" hidden></p>
+    </form>
+  </dialog>
   <dialog id="chat-dialog" class="dialog-panel" aria-labelledby="chat-title">
     <div class="dialog-header"><div><h2 id="chat-title">Discussion</h2><p class="muted small" id="chat-subtitle"></p></div><button class="close-button" type="button" id="chat-close" aria-label="Fermer">×</button></div>
     <div id="chat-messages" class="chat-messages" aria-live="polite"></div>

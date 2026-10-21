@@ -7,6 +7,7 @@ const CATEGORIES = {cours:'Cours',exercices:'Exercices',correction:'Correction',
 const MAX_SIZE = 15 * 1024 * 1024;
 let api, myProfile=null, students=[], resources=[], studentResources=[], attachments=[], messages=[];
 let editingResource=null, openedChat=null, toastTimeout=null, announcedUnread=false, pollingMessages=false;
+let latexFileContext=null, quickUploadResource=null, quickUploadBusy=false;
 
 function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function formatDate(v){
@@ -57,7 +58,10 @@ async function signIn(e){
   }catch(err){feedback('login-error',err.message,true)}finally{$('login-submit').disabled=false;}
 }
 async function loadMySpace(){
-  const {data:{user},error:ue}=await api.auth.getUser();
+  // Session locale : évite une requête Auth supplémentaire au chargement.
+  // Les données restent toujours vérifiées par les règles RLS de Supabase.
+  const {data:{session},error:ue}=await api.auth.getSession();
+  const user=session?.user;
   if(ue||!user){page('login');return;}
   const {data:p,error}=await api.from('profiles').select('id,identifier,display_name,role,active').eq('id',user.id).maybeSingle();
   if(error||!p?.active){await api.auth.signOut();myProfile=null;page('login');feedback('login-error','Compte non disponible. Contacte le responsable du service.',true);return;}
@@ -92,8 +96,8 @@ function filesFor(r){
 }
 async function loadStudent(){
   const [rr,fr]=await Promise.all([
-    api.from('resources').select('*').order('added_at',{ascending:false}),
-    api.from('resource_files').select('*')
+    api.from('resources').select('id,title,description,content,category,course_date,added_at,file_path,file_name').order('added_at',{ascending:false}),
+    api.from('resource_files').select('id,resource_id,file_path,file_name')
   ]);
   if(rr.error||fr.error){toast('Impossible de charger les documents. La migration SQL V2 est-elle exécutée ?',true);return;}
   studentResources=rr.data||[];attachments=fr.data||[];
@@ -125,16 +129,16 @@ function renderStudent(){
     </article>`;
   }).join('');
 }
-async function openFile(resourceId,index){
-  const r=[...studentResources,...resources].find(x=>x.id===resourceId);const f=r&&filesFor(r)[index];
-  if(!f)return;
-  // Création immédiate de l'onglet : compatible navigateurs mobiles.
-  const tab=window.open('about:blank','_blank');
-  try{
-    const {data,error}=await api.storage.from(BUCKET).createSignedUrl(f.file_path,120);
-    if(error||!data?.signedUrl)throw new Error('Impossible de consulter ce fichier.');
-    if(tab){tab.opener=null;tab.location.replace(data.signedUrl);}else window.location.assign(data.signedUrl);
-  }catch(e){if(tab)tab.close();toast(e.message||'Fichier indisponible.',true);}
+function openFile(resourceId,index){
+  const r=[...studentResources,...resources].find(x=>x.id===resourceId);
+  const file=r&&filesFor(r)[index];
+  if(!file)return;
+  const target=new URL('./lecteur.html',window.location.href);
+  target.searchParams.set('document',resourceId);
+  target.searchParams.set('piece',file.id||'principal');
+  // Pas de lien signé Supabase dans la barre d'adresse : la vérification
+  // des droits et l'obtention du lien sont faites dans le lecteur privé.
+  window.open(target.href,'_blank','noopener,noreferrer');
 }
 function studentOpts(){
   const selected=$('resource-student').value;
@@ -146,16 +150,18 @@ function studentOpts(){
 }
 async function loadAdmin(){
   if(myProfile?.role!=='admin')return;
-  const [pr,rr,fr,mr]=await Promise.all([
+  // Priorité aux données de l'interface : le chargement des discussions
+  // n'empêche plus l'affichage de l'administration.
+  const [pr,rr,fr]=await Promise.all([
     api.from('profiles').select('id,identifier,display_name,active,created_at').eq('role','student').order('display_name'),
-    api.from('resources').select('*').order('added_at',{ascending:false}),
-    api.from('resource_files').select('*'),
-    api.from('resource_messages').select('id,resource_id,student_id,sender_role,body,created_at,admin_read_at').order('created_at',{ascending:false}).limit(1200)
+    api.from('resources').select('id,student_id,title,description,content,category,course_date,added_at,file_path,file_name').order('added_at',{ascending:false}),
+    api.from('resource_files').select('id,resource_id,file_path,file_name')
   ]);
-  if(pr.error||rr.error||fr.error||mr.error){toast('Chargement admin impossible : exécute la migration SQL V2.',true);return;}
-  students=pr.data||[];resources=rr.data||[];attachments=fr.data||[];messages=mr.data||[];
+  if(pr.error||rr.error||fr.error){toast('Chargement des documents impossible. Réessaie.',true);return;}
+  students=pr.data||[];resources=rr.data||[];attachments=fr.data||[];
   $('admin-count').textContent=`${students.length} élève${students.length>1?'s':''} · ${resources.length} envoi${resources.length>1?'s':''}`;
-  studentOpts();renderAdminStudents();renderAdminResources();renderThreads();updateUnreadUI();
+  studentOpts();renderAdminStudents();renderAdminResources();
+  void refreshAdminMessages().catch(()=>{});
 }
 function renderAdminStudents(){
   $('admin-students').innerHTML=students.length?students.map(s=>`
@@ -169,6 +175,16 @@ function renderAdminStudents(){
       </div>
     </div>`).join(''):'<p class="muted small">Aucun élève pour le moment.</p>';
 }
+function adminFileTiles(r){
+  return filesFor(r).map((f,idx)=>{
+    const token=f.id||'principal';
+    return `<div class="admin-file-tile">
+      <button type="button" class="file-tile-remove" data-file-delete="${esc(r.id)}" data-file-token="${esc(token)}" aria-label="Supprimer ${esc(f.file_name)}" title="Supprimer ce fichier">×</button>
+      <button type="button" class="admin-file-open" data-open-admin-file="${esc(r.id)}" data-file-index="${idx}" title="Ouvrir le fichier">📄 ${esc(f.file_name)}</button>
+      <button type="button" class="admin-latex-button" data-latex-resource="${esc(r.id)}" data-latex-token="${esc(token)}" title="Code LaTeX privé de ce fichier">&lt;/&gt; Code LaTeX</button>
+    </div>`;
+  }).join('');
+}
 function renderAdminResources(){
   const target=$('admin-filter-student').value;
   $('admin-resources').innerHTML=resources.filter(r=>target==='all'||r.student_id===target).map(r=>{
@@ -176,12 +192,23 @@ function renderAdminResources(){
     return `<div class="admin-row">
       <div class="admin-row-head"><strong>${esc(r.title)}</strong><span class="tag ${esc(r.category)}">${esc(CATEGORIES[r.category]||'Autre')}</span></div>
       <small>${esc(student?.display_name||'Élève inconnu')} · Publié le ${esc(formatDate(r.added_at))}${r.course_date?' · Cours du '+esc(courseDate(r.course_date)):''} · ${filesFor(r).length} fichier(s)</small>
+      ${filesFor(r).length?`<div class="admin-file-grid">${adminFileTiles(r)}</div>`:''}
       <div class="admin-row-actions">
+        <button class="tiny" data-admin-resource="quick-add" data-id="${esc(r.id)}">+ Ajouter des PDF</button>
         <button class="tiny" data-admin-resource="chat" data-id="${esc(r.id)}">Discussion</button>
-        <button class="tiny" data-admin-resource="edit" data-id="${esc(r.id)}">Modifier / fichiers</button>
-        <button class="tiny danger" data-admin-resource="delete" data-id="${esc(r.id)}">Supprimer</button>
+        <button class="tiny" data-admin-resource="edit" data-id="${esc(r.id)}">Modifier</button>
+        <button class="tiny danger" data-admin-resource="delete" data-id="${esc(r.id)}">Supprimer l'envoi</button>
       </div></div>`;
   }).join('')||'<p class="muted small">Aucun document pour cette sélection.</p>';
+}
+function handleAdminFileClick(e){
+  const del=e.target.closest('[data-file-delete]');
+  if(del){deleteOneFile(del.dataset.fileDelete,del.dataset.fileToken);return true;}
+  const tex=e.target.closest('[data-latex-resource]');
+  if(tex){openLatexEditor(tex.dataset.latexResource,tex.dataset.latexToken);return true;}
+  const open=e.target.closest('[data-open-admin-file]');
+  if(open){openFile(open.dataset.openAdminFile,Number(open.dataset.fileIndex));return true;}
+  return false;
 }
 function unreadStudentMessages(){
   return messages.filter(m=>m.sender_role==='student'&&!m.admin_read_at);
@@ -319,6 +346,13 @@ function resetResourceForm(){
   $('resource-submit').textContent='Publier pour cet élève';$('resource-cancel').hidden=true;
   $('resource-existing-files').hidden=true;$('resource-existing-files').innerHTML='';editingResource=null;clear('resource-result');
 }
+function renderEditorFiles(r){
+  const existing=filesFor(r);
+  $('resource-existing-files').hidden=!existing.length;
+  $('resource-existing-files').innerHTML=existing.length
+    ?`<h4>Fichiers actuels (${existing.length}) — clic sur × pour supprimer</h4><div class="admin-file-grid">${adminFileTiles(r)}</div>`
+    :'';
+}
 function editResource(id){
   const r=resources.find(x=>x.id===id);if(!r)return;
   editingResource=r;$('resource-edit-id').value=r.id;
@@ -327,9 +361,7 @@ function editResource(id){
   $('resource-course-date').value=r.course_date||'';
   $('resource-description').value=r.description||'';$('resource-content').value=r.content||'';$('resource-file').value='';
   $('resource-submit').textContent='Enregistrer les modifications';$('resource-cancel').hidden=false;clear('resource-result');
-  const existing=filesFor(r);$('resource-existing-files').hidden=!existing.length;
-  $('resource-existing-files').innerHTML=existing.length?`<h4>Fichiers actuels (${existing.length})</h4>`+existing.map((f,i)=>
-    `<div class="existing-file"><span>${esc(f.file_name)}</span>${f.id?`<button type="button" class="tiny danger" data-remove-attachment="${esc(f.id)}">Retirer</button>`:'<span class="hint">Fichier principal</span>'}</div>`).join(''):'';
+  renderEditorFiles(r);
   $('resource-form').scrollIntoView({behavior:'smooth',block:'start'});
 }
 function validateFiles(files){
@@ -404,12 +436,132 @@ async function saveResource(e){
     feedback('resource-result',err.message||'Échec de publication.',true);
   }finally{$('resource-submit').disabled=false;}
 }
-async function removeAttachment(id){
-  const f=attachments.find(f=>f.id===id);if(!f||!confirm(`Retirer définitivement « ${f.file_name} » ?`))return;
-  const {error}=await api.from('resource_files').delete().eq('id',id);if(error){toast(error.message,true);return;}
-  const {error:se}=await api.storage.from(BUCKET).remove([f.file_path]);
-  await loadAdmin();if(editingResource)editResource(editingResource.id);
-  toast(se?'Référence retirée. Nettoyage du fichier à vérifier dans Supabase.':'Fichier retiré.',Boolean(se));
+async function deleteOneFile(resourceId,token){
+  if(myProfile?.role!=='admin')return;
+  const r=resources.find(x=>x.id===resourceId);
+  if(!r)return;
+  const all=filesFor(r);
+  const file=all.find(f=>(f.id||'principal')===token);
+  if(!file)return;
+  if(all.length===1&&!String(r.content||'').trim()){
+    toast('Ajoute d’abord un fichier de remplacement ou des consignes avant de supprimer le dernier PDF.',true);
+    return;
+  }
+  if(!confirm(`Supprimer définitivement « ${file.file_name} » ?`))return;
+  try{
+    if(token==='principal'){
+      const replacement=all.find(f=>f.id);
+      if(replacement){
+        // Promotion avant suppression : le document conserve un fichier principal.
+        const {error:ue}=await api.from('resources').update({file_path:replacement.file_path,file_name:replacement.file_name}).eq('id',resourceId);
+        if(ue)throw ue;
+        const {error:de}=await api.from('resource_files').delete().eq('id',replacement.id);
+        if(de)throw new Error('Le remplacement est enregistré, mais un doublon reste à nettoyer : '+de.message);
+      }else{
+        const {error:ue}=await api.from('resources').update({file_path:null,file_name:null}).eq('id',resourceId);
+        if(ue)throw ue;
+      }
+    }else{
+      const {error:de}=await api.from('resource_files').delete().eq('id',token);
+      if(de)throw de;
+    }
+    // La source LaTeX est supprimée avec la référence au fichier.
+    const {error:le}=await api.from('resource_file_sources').delete().eq('file_path',file.file_path);
+    const {error:se}=await api.storage.from(BUCKET).remove([file.file_path]);
+    await loadAdmin();
+    if(editingResource?.id===resourceId){const current=resources.find(x=>x.id===resourceId);if(current)renderEditorFiles(current);}
+    toast(le||se?'Pièce jointe retirée. Vérifie le nettoyage des fichiers dans Supabase.':'Fichier supprimé.');
+  }catch(err){toast('Suppression impossible : '+(err.message||err),true);await loadAdmin();}
+}
+
+// Dépôt rapide, directement depuis un envoi existant dans l'administration.
+function startQuickUpload(resourceId){
+  if(myProfile?.role!=='admin'||quickUploadBusy)return;
+  quickUploadResource=resourceId;
+  const input=$('admin-quick-files');input.value='';input.click();
+}
+async function addFilesDirectly(){
+  const resourceId=quickUploadResource;
+  const r=resources.find(x=>x.id===resourceId);
+  const fs=[...$('admin-quick-files').files];
+  quickUploadResource=null;
+  if(!r||!fs.length||quickUploadBusy)return;
+  quickUploadBusy=true;
+  let uploaded=[];
+  try{
+    validateFiles(fs);
+    uploaded=await uploadFiles(r.student_id,fs);
+    const main=!r.file_path?uploaded[0]:null;
+    const rest=main?uploaded.slice(1):uploaded;
+    if(main){
+      const {error}=await api.from('resources').update({file_path:main.file_path,file_name:main.file_name}).eq('id',r.id);
+      if(error)throw error;
+    }
+    if(rest.length){
+      const {error}=await api.from('resource_files').insert(rest.map(f=>({...f,resource_id:r.id})));
+      if(error)throw error;
+    }
+    await loadAdmin();
+    if(editingResource?.id===r.id){const current=resources.find(x=>x.id===r.id);if(current)renderEditorFiles(current);}
+    toast(`${fs.length} fichier${fs.length>1?'s':''} ajouté${fs.length>1?'s':''}.`);
+  }catch(err){
+    const toClean=err.uploaded||uploaded;
+    for(const f of toClean){
+      const [x,y]=await Promise.all([
+        api.from('resources').select('id').eq('file_path',f.file_path).maybeSingle(),
+        api.from('resource_files').select('id').eq('file_path',f.file_path).maybeSingle()
+      ]);
+      if(!x.data&&!y.data)await api.storage.from(BUCKET).remove([f.file_path]);
+    }
+    toast('Ajout impossible : '+(err.message||err),true);await loadAdmin();
+  }finally{quickUploadBusy=false;}
+}
+
+async function openLatexEditor(resourceId,token){
+  if(myProfile?.role!=='admin')return;
+  const r=resources.find(x=>x.id===resourceId);
+  const f=r&&filesFor(r).find(f=>(f.id||'principal')===token);
+  if(!f)return;
+  latexFileContext={resourceId,filePath:f.file_path};
+  $('latex-file-name').textContent=f.file_name;
+  $('latex-content').value='';clear('latex-feedback');
+  $('latex-status').textContent='Chargement du code privé…';
+  $('latex-dialog').showModal();
+  const {data,error}=await api.from('resource_file_sources').select('latex_source').eq('file_path',f.file_path).maybeSingle();
+  if(latexFileContext?.filePath!==f.file_path)return;
+  if(error){$('latex-status').textContent='Erreur de lecture : '+error.message;return;}
+  $('latex-content').value=data?.latex_source||'';
+  $('latex-status').textContent=data?'Source privée enregistrée.':'Aucun code LaTeX enregistré pour ce fichier.';
+}
+async function saveLatex(e){
+  e.preventDefault();
+  if(myProfile?.role!=='admin'||!latexFileContext)return;
+  const {resourceId,filePath}=latexFileContext;
+  const source=$('latex-content').value;
+  const button=$('latex-save');button.disabled=true;clear('latex-feedback');
+  try{
+    if(source.length>500000)throw new Error('Le code dépasse la limite de 500 000 caractères.');
+    let error;
+    if(source.trim()){
+      ({error}=await api.from('resource_file_sources').upsert({file_path:filePath,resource_id:resourceId,latex_source:source},{onConflict:'file_path'}));
+    }else{
+      ({error}=await api.from('resource_file_sources').delete().eq('file_path',filePath));
+    }
+    if(error)throw error;
+    $('latex-status').textContent=source.trim()?'Source LaTeX enregistrée.':'Source supprimée.';
+    feedback('latex-feedback','Enregistré uniquement dans l’administration.');
+  }catch(err){feedback('latex-feedback','Erreur : '+(err.message||err),true);}finally{button.disabled=false;}
+}
+function downloadLatex(){
+  if(myProfile?.role!=='admin'||!latexFileContext)return;
+  const src=$('latex-content').value;
+  if(!src.trim()){toast('Aucun code à télécharger.',true);return;}
+  const fileName=($('latex-file-name').textContent||'source').replace(/\.[^.]+$/,'');
+  const blob=new Blob([src],{type:'text/x-tex;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;
+  a.download=(fileName.replace(/[^a-zA-Z0-9._-]/g,'_')||'source')+'.tex';a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),6000);
 }
 async function deleteResource(id){
   const r=resources.find(x=>x.id===id);if(!r||!confirm(`Supprimer « ${r.title} », tous ses fichiers ET sa discussion ?`))return;
@@ -493,13 +645,21 @@ async function boot(){
   $('create-student-form').addEventListener('submit',createStudent);
   $('resource-form').addEventListener('submit',saveResource);
   $('resource-cancel').addEventListener('click',resetResourceForm);
-  $('resource-existing-files').addEventListener('click',(e)=>{const b=e.target.closest('[data-remove-attachment]');if(b)removeAttachment(b.dataset.removeAttachment);});
+  $('resource-existing-files').addEventListener('click',handleAdminFileClick);
   $('admin-refresh').addEventListener('click',loadAdmin);
+  $('admin-quick-files').addEventListener('change',addFilesDirectly);
+  $('latex-form').addEventListener('submit',saveLatex);
+  $('latex-close').addEventListener('click',()=>$('latex-dialog').close());
+  $('latex-download').addEventListener('click',downloadLatex);
+  $('latex-dialog').addEventListener('close',()=>{latexFileContext=null;});
   $('admin-filter-student').addEventListener('change',renderAdminResources);
   $('admin-students').addEventListener('click',(e)=>{const b=e.target.closest('[data-admin-action]');if(b)studentAction(b.dataset.adminAction,b.dataset.id);});
-  $('admin-resources').addEventListener('click',(e)=>{const b=e.target.closest('[data-admin-resource]');if(!b)return;
+  $('admin-resources').addEventListener('click',(e)=>{
+    if(handleAdminFileClick(e))return;
+    const b=e.target.closest('[data-admin-resource]');if(!b)return;
     if(b.dataset.adminResource==='chat')openChat(b.dataset.id);
     if(b.dataset.adminResource==='edit')editResource(b.dataset.id);
+    if(b.dataset.adminResource==='quick-add')startQuickUpload(b.dataset.id);
     if(b.dataset.adminResource==='delete')deleteResource(b.dataset.id);
   });
   $('admin-threads').addEventListener('click',(e)=>{

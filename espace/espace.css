@@ -67,3 +67,18 @@
 @media(max-width:620px){.site-header .header-nav{flex-wrap:nowrap;gap:7px}.site-header .settings-trigger{width:40px;height:40px}.site-header .settings-menu{max-height:min(60vh,340px)}.admin-unread-banner{align-items:flex-start}.admin-unread-banner span{display:block}}
 
 .site-header .settings-gear{font-family:Arial,sans-serif;font-size:25px;line-height:1;font-weight:400}
+
+/* V4 — cartes jointes, commandes de suppression et éditeur privé */
+.admin-file-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr));gap:12px;margin:14px 0 8px}
+.admin-file-tile{position:relative;min-width:0;display:flex;flex-direction:column;gap:7px;padding:17px 10px 11px;border:1px solid #cfddea;border-radius:12px;background:#fff;box-shadow:0 3px 10px rgba(21,54,90,.035)}
+.admin-file-open{min-width:0;display:block;min-height:51px;border:0;background:#f1f7fe;color:#1f4e85;border-radius:8px;padding:10px 8px;font-size:.8rem;font-weight:750;text-align:left;overflow-wrap:anywhere;cursor:pointer}
+.admin-file-open:hover{background:#e1efff}
+.file-tile-remove{position:absolute;top:-9px;right:-9px;width:29px;height:29px;display:grid;place-items:center;border-radius:50%;border:2px solid white;background:#b12e39;color:#fff;font-size:21px;line-height:1;box-shadow:0 3px 12px rgba(60,19,25,.18);z-index:1}
+.file-tile-remove:hover{background:#8f1722}
+.admin-latex-button{border:1px solid #dce6f1;background:white;color:#375671;font-size:.75rem;border-radius:7px;padding:8px 7px;font-weight:700;text-align:center}
+.admin-latex-button:hover{background:#eff6fd}
+.latex-dialog{width:min(850px,calc(100% - 20px));max-height:94vh}
+.latex-editor{display:block;width:100%;min-height:290px;font:13px/1.5 'DejaVu Sans Mono',Consolas,monospace;white-space:pre;tab-size:2;resize:vertical;direction:ltr}
+.latex-dialog .stack{margin-top:12px}
+.latex-dialog .dialog-header p{overflow-wrap:anywhere}
+@media(max-width:620px){.admin-file-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.latex-dialog{padding:16px}.latex-editor{min-height:42vh}}
